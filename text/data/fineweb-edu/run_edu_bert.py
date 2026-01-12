@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--model_name", type=str, default="HHuggingFaceFW/fineweb-edu-classifier"
+        "--model_name", type=str, default="HuggingFaceFW/fineweb-edu-classifier"
     )
     parser.add_argument("--dataset_name", type=str, default="HuggingFaceFW/fineweb")
     parser.add_argument("--dataset_config", type=str, default="default")
