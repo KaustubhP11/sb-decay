@@ -163,3 +163,10 @@ cython_debug/
 
 # Mac
 *.DS_Store
+/checkpoints/
+/.cache/
+/logs/
+/text/data/openthoughts/processed/
+__pycache__/
+
+**/__pycache__/
