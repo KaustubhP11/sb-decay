@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -39,6 +40,38 @@ def _install_functorch_dim_shim_if_needed() -> None:
     sys.modules["functorch.dim"] = functorch_dim_mod
 
 
+def _install_grouped_gemm_shim_if_needed() -> None:
+    """
+    Provide a minimal grouped_gemm shim so Nanotron modules can import on systems
+    where grouped_gemm/CUDA extensions are unavailable.
+
+    This is safe for non-MoE conversion paths; if grouped_gemm is actually used,
+    the shim raises a clear error at call time.
+    """
+    if "grouped_gemm.ops" in sys.modules:
+        return
+
+    try:
+        import grouped_gemm.ops  # type: ignore  # noqa: F401
+        return
+    except Exception:
+        pass
+
+    grouped_gemm_mod = types.ModuleType("grouped_gemm")
+    grouped_gemm_ops_mod = types.ModuleType("grouped_gemm.ops")
+
+    def _missing_gmm(*_args, **_kwargs):
+        raise RuntimeError(
+            "grouped_gemm shim was used at runtime. This conversion path requires "
+            "a real grouped_gemm installation."
+        )
+
+    grouped_gemm_ops_mod.gmm = _missing_gmm
+    grouped_gemm_mod.ops = grouped_gemm_ops_mod
+    sys.modules["grouped_gemm"] = grouped_gemm_mod
+    sys.modules["grouped_gemm.ops"] = grouped_gemm_ops_mod
+
+
 def _parse_dtype(name: str) -> torch.dtype:
     mapping = {
         "float32": torch.float32,
@@ -48,6 +81,15 @@ def _parse_dtype(name: str) -> torch.dtype:
     if name not in mapping:
         raise ValueError(f"Unsupported dtype: {name}. Use one of: {', '.join(mapping)}")
     return mapping[name]
+
+
+def _ensure_single_process_dist_env() -> None:
+    """Set minimal env vars Nanotron expects for 1-process conversion."""
+    os.environ.setdefault("WORLD_SIZE", "1")
+    os.environ.setdefault("RANK", "0")
+    os.environ.setdefault("LOCAL_RANK", "0")
+    os.environ.setdefault("MASTER_ADDR", "127.0.0.1")
+    os.environ.setdefault("MASTER_PORT", "29500")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -96,6 +138,8 @@ def main() -> None:
     sys.path.insert(0, str(nanotron_repo / "src"))
 
     _install_functorch_dim_shim_if_needed()
+    _install_grouped_gemm_shim_if_needed()
+    _ensure_single_process_dist_env()
 
     from transformers import LlamaForCausalLM
 

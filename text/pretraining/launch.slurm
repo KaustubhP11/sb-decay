@@ -9,7 +9,7 @@
 set -e
 
 TRAINER_PYTHON_FILE="run_train.py"
-CONFIG_PATH_YAML="smollm3/stage1_8T.yaml"
+CONFIG_PATH_YAML="smollm3/run_decay.yaml"
 nvidia-smi
 
 # Show some environment variables
