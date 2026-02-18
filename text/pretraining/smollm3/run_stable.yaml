@@ -1,6 +1,6 @@
 checkpoints:
   checkpoint_interval: 500
-  checkpoints_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_openthoughts
+  checkpoints_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_openthoughts
   checkpoints_path_is_shared_file_system: true
   load_lr_scheduler: false
   load_optimizer: false
@@ -80,7 +80,7 @@ optimizer:
   clip_grad: 1.0
   learning_rate_scheduler:
     learning_rate: 0.0002
-    lr_decay_starting_step: 21
+    lr_decay_starting_step: 2101
     lr_decay_steps: 2100
     lr_decay_style: linear
     lr_warmup_steps: 20
