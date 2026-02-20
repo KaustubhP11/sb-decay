@@ -80,8 +80,8 @@ optimizer:
   clip_grad: 1.0
   learning_rate_scheduler:
     learning_rate: 0.0002
-    lr_decay_starting_step: 2101
-    lr_decay_steps: 2100
+    lr_decay_starting_step: 1773
+    lr_decay_steps: 1772
     lr_decay_style: linear
     lr_warmup_steps: 20
     lr_warmup_style: linear
@@ -122,6 +122,6 @@ tokens:
   limit_val_batches: 0
   micro_batch_size: 1
   sequence_length: 4096
-  train_steps: 2100
+  train_steps: 1772
   val_check_interval: 100
 lighteval: null

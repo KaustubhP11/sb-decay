@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=smollm3-decay
+#SBATCH --job-name=smollm3-stable
 #SBATCH --nodes=4
 #SBATCH --gres=gpu:4
 #SBATCH --qos=normal
@@ -12,7 +12,7 @@ set -e
 cd /iopsstor/scratch/cscs/kponkshe/nanotron
 
 TRAINER_PYTHON_FILE="run_train.py"
-CONFIG_PATH_YAML="/iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/smollm3/run_decay.yaml"
+CONFIG_PATH_YAML="/iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/smollm3/run_stable.yaml"
 nvidia-smi
 
 # Show some environment variables

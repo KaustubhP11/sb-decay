@@ -6,12 +6,12 @@ python3 /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/openthoughts/prepare_
   --output_dir /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/openthoughts/processed \
   --num_proc 16 \
   --preview 3 \
-  --parquet_shards 128
+  --parquet_shards 256
 
 python3 /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/openthoughts/tokenize_openthoughts.py \
   --input_parquet_dir /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/openthoughts/processed/raw_parquet \
   --output_tokenized_dir /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/openthoughts/processed/tokenized \
   --tokenizer meta-llama/Llama-3.2-1B \
-  --tasks 128 \
+  --tasks 256 \
   --workers 64 \
   --clean_output
