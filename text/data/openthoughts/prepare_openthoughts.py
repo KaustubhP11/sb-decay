@@ -6,18 +6,17 @@ from typing import Any
 from datasets import load_dataset
 
 
-# OpenThoughts samples may use either <think>...</think> or <<think>...<</think>.
-THINK_RE = re.compile(
-    r"(?P<open><<think>|<think>).*?(?P<close><</think>|</think>)",
-    flags=re.DOTALL | re.IGNORECASE,
-)
+# OpenThoughts samples may use non-standard <<think>...<</think> tags.
+THINK_OPEN_RE = re.compile(r"<<\s*think\s*>", flags=re.IGNORECASE)
+THINK_CLOSE_RE = re.compile(r"<</\s*think\s*>", flags=re.IGNORECASE)
 
 
-def _strip_reasoning(text: str) -> str:
-    """Remove chain-of-thought content while preserving think tags."""
+def _normalize_think_tags(text: str) -> str:
+    """Normalize think tags to the standard <think>...</think> format."""
     if not text:
         return ""
-    text = THINK_RE.sub(lambda m: f"{m.group('open')}{m.group('close')}", text)
+    text = THINK_OPEN_RE.sub("<think>", text)
+    text = THINK_CLOSE_RE.sub("</think>", text)
     return text.strip()
 
 
@@ -33,7 +32,7 @@ def _extract_answer_from_conversation(conversation: Any) -> str:
         role = str(turn.get("from", "")).strip().lower()
         value = turn.get("value", "")
         if role == "assistant" and isinstance(value, str):
-            cleaned = _strip_reasoning(value)
+            cleaned = _normalize_think_tags(value)
             if cleaned:
                 assistant_values.append(cleaned)
 
@@ -43,7 +42,8 @@ def _extract_answer_from_conversation(conversation: Any) -> str:
 def _to_text(example: dict[str, Any], text_field: str | None) -> dict[str, str]:
     if text_field:
         value = example.get(text_field, "")
-        return {"text": str(value) if value is not None else ""}
+        normalized = _normalize_think_tags(str(value)) if value is not None else ""
+        return {"text": normalized}
 
     # OpenThoughts-specific path: keep only Question + final Answer.
     question = example.get("question", "")
@@ -57,7 +57,7 @@ def _to_text(example: dict[str, Any], text_field: str | None) -> dict[str, str]:
     if not answer:
         # Fallbacks if a sample is missing `conversation`.
         raw_answer = example.get("answer", "") or example.get("response", "") or example.get("output", "")
-        answer = _strip_reasoning(str(raw_answer)) if raw_answer is not None else ""
+        answer = _normalize_think_tags(str(raw_answer)) if raw_answer is not None else ""
 
     if question and answer:
         return {"text": f"Question: {question}\nAnswer: {answer}"}
@@ -77,7 +77,7 @@ def _to_text(example: dict[str, Any], text_field: str | None) -> dict[str, str]:
     for key in direct_candidates:
         value = example.get(key, None)
         if isinstance(value, str) and value.strip():
-            return {"text": value}
+            return {"text": _normalize_think_tags(value)}
 
     # Handle chat-style lists of messages/conversations.
     for key in ["messages", "conversation", "conversations"]:
@@ -90,15 +90,15 @@ def _to_text(example: dict[str, Any], text_field: str | None) -> dict[str, str]:
                     content = item.get("content", "")
                     if isinstance(content, list):
                         content = " ".join(str(x) for x in content)
-                    lines.append(f"{role}: {content}".strip())
+                    lines.append(f"{role}: {_normalize_think_tags(str(content))}".strip())
                 else:
-                    lines.append(str(item))
-            text = "\n".join(lines).strip()
+                    lines.append(_normalize_think_tags(str(item)))
+            text = _normalize_think_tags("\n".join(lines).strip())
             if text:
                 return {"text": text}
 
     # Last-resort fallback that keeps script robust.
-    return {"text": str(example)}
+    return {"text": _normalize_think_tags(str(example))}
 
 
 def main() -> None:

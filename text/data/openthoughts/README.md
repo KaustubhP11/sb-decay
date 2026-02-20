@@ -48,8 +48,8 @@ Notes:
 - For OpenThoughts2-1M, the script now builds each sample as:
   - `Question: <question>`
   - `Answer: <final assistant answer>`
-- It removes only the inner reasoning content from think blocks while keeping tags
-  (supports both `<think>...</think>` and `<<think>...<</think>`).
+- It keeps reasoning tokens and normalizes think tags to standard
+  `<think>...</think>` (also handles non-standard `<<think>...<</think>` input).
 - The script still has generic fallbacks for other dataset schemas.
 - For a quick smoke test, add `--max_samples 50000`.
 - Use `--preview N` to print N transformed samples before writing parquet.
