@@ -167,6 +167,7 @@ cython_debug/
 /.cache/
 /logs/
 /text/data/openthoughts/processed/
+/text/data/dolma/processed/
 __pycache__/
 
 **/__pycache__/

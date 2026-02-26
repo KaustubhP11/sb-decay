@@ -1,6 +1,6 @@
 checkpoints:
-  checkpoint_interval: 500
-  checkpoints_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_openthoughts
+  checkpoint_interval: 250
+  checkpoints_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_dolma
   checkpoints_path_is_shared_file_system: true
   load_lr_scheduler: false
   load_optimizer: false
@@ -10,10 +10,15 @@ checkpoints:
 data_stages:
 - data:
     dataset:
+      dataset_read_path:
+      - hf://datasets/open-thoughts/OpenThoughts2-1M
+      - hf://datasets/allenai/dolma3_dolmino_mix-10B-1025
       dataset_folder:
       - /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/openthoughts/processed/tokenized
+      - /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/dolma/processed/tokenized
       dataset_weights:
-      - 1.0
+      - 0.2857142857
+      - 0.7142857143
       pad_samples_to_global_batch_size: false
       return_positions: true
       token_size_in_bytes: 4
@@ -22,14 +27,14 @@ data_stages:
       vocab_size: 128256
     num_loading_workers: 8
     seed: 6
-  name: openthoughts_decay_stage3
+  name: dolma_decay_stage3
   start_training_step: 1
 general:
   benchmark_csv_path: null
   consumed_train_samples: null
   ignore_sanity_checks: true
   project: smollm3-3B-custom-decay
-  run: openthoughts-stage3-decay
+  run: dolma-stage3-decay
   seed: 6
   step: null
 logging:
@@ -81,7 +86,7 @@ optimizer:
   learning_rate_scheduler:
     learning_rate: 0.0002
     lr_decay_starting_step: 21
-    lr_decay_steps: 1772
+    lr_decay_steps: 5934
     lr_decay_style: linear
     lr_warmup_steps: 20
     lr_warmup_style: linear
@@ -122,6 +127,6 @@ tokens:
   limit_val_batches: 0
   micro_batch_size: 1
   sequence_length: 4096
-  train_steps: 1772
+  train_steps: 5934
   val_check_interval: 100
 lighteval: null

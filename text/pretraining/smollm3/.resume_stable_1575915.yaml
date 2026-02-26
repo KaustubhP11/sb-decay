@@ -2,9 +2,9 @@ checkpoints:
   checkpoint_interval: 500
   checkpoints_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_dolma
   checkpoints_path_is_shared_file_system: true
-  load_lr_scheduler: false
-  load_optimizer: false
-  resume_checkpoint_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/ckpts/SmolLM3-3B/stage2-step-4200000/nanotron
+  load_lr_scheduler: true
+  load_optimizer: true
+  resume_checkpoint_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_dolma
   save_final_state: true
   save_initial_state: false
 data_stages:
