@@ -45,23 +45,14 @@ sbatch scripts/launch_lighteval_post_no_think.sbatch
 sbatch scripts/launch_lighteval_post_think.sbatch
 ```
 
-You can also use the shared driver directly:
+Set only `MODEL_PATH` if you want to evaluate a local HF checkpoint. By default each script writes under that checkpoint directory:
 
 ```bash
-bash scripts/lighteval_smollm3.sh base
-bash scripts/lighteval_smollm3.sh mid-reasoning
-bash scripts/lighteval_smollm3.sh post-no-think
-bash scripts/lighteval_smollm3.sh post-think
-```
-
-Useful overrides for the `LightEval` launchers:
-
-```bash
-MODEL_NAME=/path/to/local/hf-checkpoint \
-MODEL_REVISION=main \
-OUTPUT_DIR=./evals/custom \
+MODEL_PATH=/path/to/local/hf-checkpoint \
 bash scripts/lighteval_post_no_think.sh
 ```
+
+This will save results under `/path/to/local/hf-checkpoint/evals/<profile>`.
 
 ### SmolLM3-3B base model
 
