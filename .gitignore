@@ -176,5 +176,6 @@ __pycache__/
 **/.*/
 **/.*/**
 **/core_nid*
+text/pretraining/smollm3/.resume_*.yaml
 launch_container_flashattn.slurm
 !.gitignore
