@@ -8,8 +8,8 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../../" && pwd)"
+REPO_ROOT="${REPO_ROOT:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
+SCRIPT_DIR="${SCRIPT_DIR:-${REPO_ROOT}/text/evaluation/smollm3/scripts}"
 
 # Mid-training reasoning SmolLM3 LightEval profile.
 MODEL_PATH="${MODEL_PATH:-${REPO_ROOT}/checkpoints/run_decay_dolma/hf}"

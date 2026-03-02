@@ -8,8 +8,8 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../../" && pwd)"
+REPO_ROOT="${REPO_ROOT:-${SLURM_SUBMIT_DIR:-$(pwd)}}"
+SCRIPT_DIR="${SCRIPT_DIR:-${REPO_ROOT}/text/evaluation/smollm3/scripts}"
 LOG_DIR="${LOG_DIR:-${REPO_ROOT}/logs}"
 LOG_PREFIX="${SLURM_JOB_NAME:-basic-evals}-${SLURM_JOB_ID:-manual}"
 
