@@ -31,6 +31,38 @@ sbatch scripts/launch_math.sbatch
 
 Override `MODEL_PATH`, `OUTPUT_PATH`, or `THINK_END_TOKEN` if you want to point at a different local Hugging Face checkpoint.
 
+For the SmolLM3 `LightEval` flows from this README, use the profile-based launchers:
+
+```bash
+bash scripts/lighteval_base.sh
+bash scripts/lighteval_mid_reasoning.sh
+bash scripts/lighteval_post_no_think.sh
+bash scripts/lighteval_post_think.sh
+
+sbatch scripts/launch_lighteval_base.sbatch
+sbatch scripts/launch_lighteval_mid_reasoning.sbatch
+sbatch scripts/launch_lighteval_post_no_think.sbatch
+sbatch scripts/launch_lighteval_post_think.sbatch
+```
+
+You can also use the shared driver directly:
+
+```bash
+bash scripts/lighteval_smollm3.sh base
+bash scripts/lighteval_smollm3.sh mid-reasoning
+bash scripts/lighteval_smollm3.sh post-no-think
+bash scripts/lighteval_smollm3.sh post-think
+```
+
+Useful overrides for the `LightEval` launchers:
+
+```bash
+MODEL_NAME=/path/to/local/hf-checkpoint \
+MODEL_REVISION=main \
+OUTPUT_DIR=./evals/custom \
+bash scripts/lighteval_post_no_think.sh
+```
+
 ### SmolLM3-3B base model
 
 ```bash
