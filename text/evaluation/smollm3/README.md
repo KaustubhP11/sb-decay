@@ -20,13 +20,24 @@ GIT_LFS_SKIP_SMUDGE=1 uv pip install -r requirements.txt
 
 All commands below were run on 2 x H100s with 80GB of memory each, using the `vllm` backend.
 
+The local launcher scripts live under `scripts/`:
+
+```bash
+bash scripts/basic_eval.sh
+bash scripts/math_eval.sh
+sbatch scripts/launch_basic.sbatch
+sbatch scripts/launch_math.sbatch
+```
+
+Override `MODEL_PATH`, `OUTPUT_PATH`, or `THINK_END_TOKEN` if you want to point at a different local Hugging Face checkpoint.
+
 ### SmolLM3-3B base model
 
 ```bash
 MODEL_ARGS="model_name=HuggingFaceTB/SmolLM3-3B-Base,dtype=bfloat16,max_model_length=32768,max_num_batched_tokens=32768,generation_parameters={temperature:0},tensor_parallel_size=2,gpu_memory_utilization=0.7"
 lighteval vllm \
     "$MODEL_ARGS" \
-    "smollm3_base_test.txt" \
+    "smollm3_base.txt" \
     --custom-tasks "tasks.py" \
     --output-dir "evals/" \
     --save-details
