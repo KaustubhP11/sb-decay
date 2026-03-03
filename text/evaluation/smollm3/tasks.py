@@ -53,7 +53,6 @@ from lighteval.tasks.extended.mix_eval.main import (
 )
 from lighteval.tasks.lighteval_task import LightevalTaskConfig
 from lighteval.tasks.multilingual.adapters import winogrand_adapter
-from lighteval.tasks.multilingual.tasks import TASKS_TABLE as ML_TASKS_TABLE
 from lighteval.tasks.multilingual.utils.task_utils import get_metrics_for_formulation
 from lighteval.tasks.requests import Doc
 from lighteval.tasks.templates.boolq import get_boolq_prompt_function
@@ -69,7 +68,6 @@ from lighteval.utils.language import Language
 from lighteval.utils.utils import remove_reasoning_tags
 
 TASKS_TABLE = []
-TASKS_TABLE.extend(ML_TASKS_TABLE)
 
 #------------------
 # BASE MODEL EVALS
