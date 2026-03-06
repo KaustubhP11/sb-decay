@@ -27,7 +27,7 @@ if [[ -n "${EXTRA_MODEL_ARGS}" ]]; then
     MODEL_ARGS+=",${EXTRA_MODEL_ARGS}"
 fi
 
-export HF_HOME="/capstor/scratch/cscs/kponkshe//hf-home-22"
+export HF_HOME="/capstor/scratch/cscs/kponkshe/hf-home-22"
 export HF_DATASETS_CACHE="${HF_HOME}/datasets"
 export TRANSFORMERS_CACHE="${HF_HOME}/transformers"
 

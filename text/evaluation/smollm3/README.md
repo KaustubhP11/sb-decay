@@ -1,12 +1,24 @@
 # SmolLM3-3B evaluation scripts
 
-We use the [LightEval](https://github.com/huggingface/lighteval/) library to benchmark our models.
+This folder supports two evaluation paths:
+- [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness) via `scripts/basic_eval.sh` and `scripts/math_eval.sh`
+- [LightEval](https://github.com/huggingface/lighteval/) via the `scripts/lighteval_*.sh` profiles
 
 ## Setup
 
 Use conda/uv/venv with `python>=3.11`.
 
-For reproducibility, we recommend fixed versions of the libraries:
+For `lm-eval-harness`:
+
+```sh
+pip install uv
+uv venv smol3_venv --python 3.11
+source smol3_venv/bin/activate
+
+uv pip install -r requirements_lm_eval.txt
+```
+
+For `LightEval` (profile scripts):
 
 ```sh
 pip install uv
