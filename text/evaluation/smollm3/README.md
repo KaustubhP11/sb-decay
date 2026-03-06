@@ -1,109 +1,83 @@
 # SmolLM3-3B evaluation scripts
 
-This folder supports two evaluation paths:
-- [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness) via `scripts/basic_eval.sh` and `scripts/math_eval.sh`
-- [LightEval](https://github.com/huggingface/lighteval/) via the `scripts/lighteval_*.sh` profiles
+There are now two script folders:
+- `scripts_lighteval/`: LightEval scripts (the SmolLM-style reference flow)
+- `scripts/`: lm-eval-harness scripts mapped to the same profile structure
 
 ## Setup
 
-Use conda/uv/venv with `python>=3.11`.
+Use `python>=3.11`.
 
-For `lm-eval-harness`:
+lm-eval:
 
 ```sh
 pip install uv
 uv venv smol3_venv --python 3.11
 source smol3_venv/bin/activate
-
-uv pip install -r requirements_lm_eval.txt
+uv pip install -r text/evaluation/smollm3/requirements_lm_eval.txt
 ```
 
-For `LightEval` (profile scripts):
+LightEval:
 
 ```sh
 pip install uv
-uv venv smol3_venv --python 3.11 
+uv venv smol3_venv --python 3.11
 source smol3_venv/bin/activate
-
-GIT_LFS_SKIP_SMUDGE=1 uv pip install -r requirements.txt
+GIT_LFS_SKIP_SMUDGE=1 uv pip install -r text/evaluation/smollm3/requirements.txt
 ```
 
-## Running the evaluations
-
-All commands below were run on 2 x H100s with 80GB of memory each, using the `vllm` backend.
-
-The local launcher scripts live under `scripts/`:
-
-```bash
-bash scripts/basic_eval.sh
-bash scripts/math_eval.sh
-sbatch scripts/launch_basic.sbatch
-sbatch scripts/launch_math.sbatch
-```
-
-Override `MODEL_PATH`, `OUTPUT_PATH`, or `THINK_END_TOKEN` if you want to point at a different local Hugging Face checkpoint.
-
-For the SmolLM3 `LightEval` flows from this README, use the profile-based launchers:
-
-```bash
-bash scripts/lighteval_base.sh
-bash scripts/lighteval_mid_reasoning.sh
-bash scripts/lighteval_post_no_think.sh
-bash scripts/lighteval_post_think.sh
-
-sbatch scripts/launch_lighteval_base.sbatch
-sbatch scripts/launch_lighteval_mid_reasoning.sbatch
-sbatch scripts/launch_lighteval_post_no_think.sbatch
-sbatch scripts/launch_lighteval_post_think.sbatch
-```
-
-Set only `MODEL_PATH` if you want to evaluate a local HF checkpoint. By default each script writes under that checkpoint directory:
-
-```bash
-MODEL_PATH=/path/to/local/hf-checkpoint \
-bash scripts/lighteval_post_no_think.sh
-```
-
-This will save results under `/path/to/local/hf-checkpoint/evals/<profile>`.
-
-### SmolLM3-3B base model
-
-```bash
-MODEL_ARGS="model_name=HuggingFaceTB/SmolLM3-3B-Base,dtype=bfloat16,max_model_length=32768,max_num_batched_tokens=32768,generation_parameters={temperature:0},tensor_parallel_size=2,gpu_memory_utilization=0.7"
-lighteval vllm \
-    "$MODEL_ARGS" \
-    "smollm3_base.txt" \
-    --custom-tasks "tasks.py" \
-    --output-dir "evals/" \
-    --save-details
-```
-
-### SmolLM3-3B mid-trained model
-
-This is a pure reasoning model, so no hybrid thinking:
-
-```sh 
-MODEL_ARGS="model_name=HuggingFaceTB/SmolLM3-3B-checkpoints,revision=it-mid-training,dtype=bfloat16,tensor_parallel_size=2,max_model_length=32768,gpu_memory_utilization=0.8,generation_parameters={max_new_tokens:32768,temperature:0.6,top_p:0.95}"
-lighteval vllm "$MODEL_ARGS" "smollm3_instruct.txt" \
-    --use-chat-template \
-    --custom-tasks "tasks.py" \
-    --output-dir "evals/" \
-    --save-details
-```
-
-### SmolLM3-3B post-trained model
+## LightEval (reference)
 
 ```sh
-# Use /think or /no_think to enable or disable extended thinking
-SYSTEM_PROMPT="/no_think" 
-MODEL_ARGS="model_name=HuggingFaceTB/SmolLM3-3B,dtype=bfloat16,tensor_parallel_size=2,max_model_length=32768,gpu_memory_utilization=0.8,generation_parameters={max_new_tokens:32768,temperature:0.6,top_p:0.95}"
-lighteval vllm "$MODEL_ARGS" "smollm3_instruct.txt" \
-    --use-chat-template \
-    --system-prompt "$SYSTEM_PROMPT" \
-    --custom-tasks "tasks.py" \
-    --output-dir "evals/" \
-    --save-details
+bash text/evaluation/smollm3/scripts_lighteval/lighteval_base.sh
+bash text/evaluation/smollm3/scripts_lighteval/lighteval_mid_reasoning.sh
+bash text/evaluation/smollm3/scripts_lighteval/lighteval_post_no_think.sh
+bash text/evaluation/smollm3/scripts_lighteval/lighteval_post_think.sh
 ```
 
-> [!NOTE]
-> BFCL is not yet supported by LightEval, so we used a [fork](https://github.com/huggingface/gorilla/tree/smollm3/berkeley-function-call-leaderboard) of the public repo, with a dedicated [parser](https://github.com/huggingface/gorilla/blob/smollm3/berkeley-function-call-leaderboard/bfcl_eval/model_handler/local_inference/smollm3.py) for SmolLM3-3B.
+## lm-eval (matching profiles)
+
+```sh
+bash text/evaluation/smollm3/scripts/base.sh
+bash text/evaluation/smollm3/scripts/mid_reasoning.sh
+bash text/evaluation/smollm3/scripts/post_no_think.sh
+bash text/evaluation/smollm3/scripts/post_think.sh
+```
+
+Notes:
+- `base.sh` mirrors the SmolLM base split: 0-shot core tasks, 5-shot `gsm8k`, 4-shot math.
+- Instruct/post profiles use 0-shot and chat template by default.
+- If your local lm-eval task names differ, override `TASKS=...` in the script call.
+- Defaults target SmolLM-style 32k context; set `MAX_MODEL_LEN=4096` (lm-eval) or `MAX_MODEL_LENGTH=4096` (LightEval) if your checkpoint is 4k.
+- For custom lm-eval YAML prompts/tasks, set `INCLUDE_PATH=/path/to/task_yamls`.
+
+Examples:
+
+```sh
+MODEL_PATH=/path/to/checkpoint \
+bash text/evaluation/smollm3/scripts/base.sh
+
+MODEL_PATH=/path/to/checkpoint \
+TASKS="gpqa_diamond,ifeval,mixeval_hard" \
+bash text/evaluation/smollm3/scripts/post_no_think.sh
+```
+
+## SLURM
+
+lm-eval launchers:
+
+```sh
+sbatch text/evaluation/smollm3/scripts/launch_base.sbatch
+sbatch text/evaluation/smollm3/scripts/launch_mid_reasoning.sbatch
+sbatch text/evaluation/smollm3/scripts/launch_post_no_think.sbatch
+sbatch text/evaluation/smollm3/scripts/launch_post_think.sbatch
+```
+
+LightEval launchers:
+
+```sh
+sbatch text/evaluation/smollm3/scripts_lighteval/launch_lighteval_base.sbatch
+sbatch text/evaluation/smollm3/scripts_lighteval/launch_lighteval_mid_reasoning.sbatch
+sbatch text/evaluation/smollm3/scripts_lighteval/launch_lighteval_post_no_think.sbatch
+sbatch text/evaluation/smollm3/scripts_lighteval/launch_lighteval_post_think.sbatch
+```

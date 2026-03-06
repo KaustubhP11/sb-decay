@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=smollm3-lm-math
+#SBATCH --job-name=smollm3-lm-post-no-think
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=2
 #SBATCH --ntasks-per-node=1
@@ -10,4 +10,4 @@
 
 set -euo pipefail
 
-bash text/evaluation/smollm3/scripts/math_eval.sh
+bash text/evaluation/smollm3/scripts/post_no_think.sh

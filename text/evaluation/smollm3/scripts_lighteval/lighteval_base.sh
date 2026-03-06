@@ -13,8 +13,8 @@ CUSTOM_TASKS="${CUSTOM_TASKS:-${EVAL_ROOT}/tasks.py}"
 OUTPUT_DIR="${OUTPUT_DIR:-${MODEL_PATH}/evals/base}"
 DTYPE="${DTYPE:-bfloat16}"
 TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-2}"
-MAX_MODEL_LENGTH="${MAX_MODEL_LENGTH:-4096}"
-MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-4096}"
+MAX_MODEL_LENGTH="${MAX_MODEL_LENGTH:-32768}"
+MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-32768}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.7}"
 GENERATION_PARAMETERS="${GENERATION_PARAMETERS:-{temperature:0}}"
 EXTRA_MODEL_ARGS="${EXTRA_MODEL_ARGS:-}"
@@ -27,13 +27,13 @@ if [[ -n "${EXTRA_MODEL_ARGS}" ]]; then
     MODEL_ARGS+=",${EXTRA_MODEL_ARGS}"
 fi
 
-export HF_HOME="/capstor/scratch/cscs/kponkshe/hf-home-22"
-export HF_DATASETS_CACHE="${HF_HOME}/datasets"
-export TRANSFORMERS_CACHE="${HF_HOME}/transformers"
-
-mkdir -p "${HF_HOME}" "${HF_DATASETS_CACHE}" "${TRANSFORMERS_CACHE}"
-
-echo "Using temporary HF cache at: ${HF_HOME}"
+if [[ -n "${HF_HOME:-}" ]]; then
+    export HF_HOME
+    export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-${HF_HOME}/datasets}"
+    export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}/transformers}"
+    mkdir -p "${HF_HOME}" "${HF_DATASETS_CACHE}" "${TRANSFORMERS_CACHE}"
+    echo "Using HF cache at: ${HF_HOME}"
+fi
 
 lighteval vllm \
     "${MODEL_ARGS}" \
