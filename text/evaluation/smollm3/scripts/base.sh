@@ -4,14 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../../" && pwd)"
 
-MODEL_PATH="${MODEL_PATH:-${REPO_ROOT}/checkpoints/run_stable_dolma/hf}"
+MODEL_PATH="${MODEL_PATH:-${REPO_ROOT}/checkpoints/run_decay_dolma/hf}"
 OUTPUT_DIR="${OUTPUT_DIR:-${MODEL_PATH}/evals/lm_eval/base}"
 LM_EVAL_MODEL="${LM_EVAL_MODEL:-vllm}"
 TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-2}"
 DATA_PARALLEL_SIZE="${DATA_PARALLEL_SIZE:-1}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.7}"
 DTYPE="${DTYPE:-bfloat16}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-4096}"
 BATCH_SIZE="${BATCH_SIZE:-auto}"
 INCLUDE_PATH="${INCLUDE_PATH:-}"
 EXTRA_MODEL_ARGS="${EXTRA_MODEL_ARGS:-}"
@@ -23,7 +23,7 @@ TASKS_4SHOT="${TASKS_4SHOT:-hendrycks_math}"
 
 GEN_KWARGS_0SHOT="${GEN_KWARGS_0SHOT:-temperature=0}"
 GEN_KWARGS_5SHOT="${GEN_KWARGS_5SHOT:-temperature=0,max_gen_toks=256}"
-GEN_KWARGS_4SHOT="${GEN_KWARGS_4SHOT:-temperature=0,max_gen_toks=4096}"
+GEN_KWARGS_4SHOT="${GEN_KWARGS_4SHOT:-temperature=0,max_gen_toks=2048}"
 
 mkdir -p "${OUTPUT_DIR}"
 
@@ -61,10 +61,10 @@ if [[ -n "${TASKS_5SHOT}" ]]; then
     --output_path "${OUTPUT_DIR}/5shot"
 fi
 
-if [[ -n "${TASKS_4SHOT}" ]]; then
-  lm_eval "${COMMON_ARGS[@]}" \
-    --tasks "${TASKS_4SHOT}" \
-    --num_fewshot 4 \
-    --gen_kwargs "${GEN_KWARGS_4SHOT}" \
-    --output_path "${OUTPUT_DIR}/4shot"
-fi
+# if [[ -n "${TASKS_4SHOT}" ]]; then
+#   lm_eval "${COMMON_ARGS[@]}" \
+#     --tasks "${TASKS_4SHOT}" \
+#     --num_fewshot 0 \
+#     --gen_kwargs "${GEN_KWARGS_4SHOT}" \
+#     --output_path "${OUTPUT_DIR}/4shot"
+# fi
