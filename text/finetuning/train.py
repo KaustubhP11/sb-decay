@@ -140,7 +140,7 @@ def get_args():
     parser.add_argument("--warmup_steps", type=int, default=100)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--output_dir", type=str, default="finetune_smollm2_python")
-    parser.add_argument("--num_proc", type=int, default=None)
+    parser.add_argument("--num_proc", type=int, default=192)
     parser.add_argument("--push_to_hub", type=str2bool, default=False)
     parser.add_argument("--repo_id", type=str, default="SmolLM2-1.7B-finetune")
     return parser.parse_args()
