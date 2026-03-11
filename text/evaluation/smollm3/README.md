@@ -121,3 +121,26 @@ sbatch text/evaluation/smollm3/scripts_lighteval/launch_lighteval_mid_reasoning.
 sbatch text/evaluation/smollm3/scripts_lighteval/launch_lighteval_post_no_think.sbatch
 sbatch text/evaluation/smollm3/scripts_lighteval/launch_lighteval_post_think.sbatch
 ```
+
+## Plotting (decay vs no_decay)
+
+Install plotting deps:
+
+```sh
+uv pip install -r text/evaluation/smollm3/plotting/requirements.txt
+```
+
+Generate comparison plots:
+
+```sh
+python text/evaluation/smollm3/plotting/plot_eval_comparison.py \
+  --baseline /path/to/no_decay_checkpoint/evals/lm_eval \
+  --candidate /path/to/decay_checkpoint/evals/lm_eval \
+  --baseline_label no_decay \
+  --candidate_label decay \
+  --out_dir text/evaluation/smollm3/plotting/out
+```
+
+Notebook version:
+
+`text/evaluation/smollm3/plotting/eval_comparison.ipynb`
