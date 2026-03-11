@@ -130,17 +130,18 @@ Install plotting deps:
 uv pip install -r text/evaluation/smollm3/plotting/requirements.txt
 ```
 
-Generate comparison plots:
+Notebook plotting (no output files required):
+
+```sh
+bash -lc 'jupyter notebook text/evaluation/smollm3/plotting/eval_comparison.ipynb'
+```
+
+Optional CLI (display-only):
 
 ```sh
 python text/evaluation/smollm3/plotting/plot_eval_comparison.py \
   --baseline /path/to/no_decay_checkpoint/evals/lm_eval \
   --candidate /path/to/decay_checkpoint/evals/lm_eval \
   --baseline_label no_decay \
-  --candidate_label decay \
-  --out_dir text/evaluation/smollm3/plotting/out
+  --candidate_label decay
 ```
-
-Notebook version:
-
-`text/evaluation/smollm3/plotting/eval_comparison.ipynb`

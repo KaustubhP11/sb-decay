@@ -4,8 +4,7 @@
 Usage:
   python text/evaluation/smollm3/plotting/plot_eval_comparison.py \
     --baseline /path/to/no_decay/evals/lm_eval \
-    --candidate /path/to/decay/evals/lm_eval \
-    --out_dir text/evaluation/smollm3/plotting/out
+    --candidate /path/to/decay/evals/lm_eval
 """
 
 from __future__ import annotations
@@ -120,7 +119,14 @@ def load_run(run: RunInfo) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def plot_grouped_bars(merged: pd.DataFrame, out_dir: Path, baseline_label: str, candidate_label: str) -> None:
+def plot_grouped_bars(
+    merged: pd.DataFrame,
+    out_dir: Path | None,
+    baseline_label: str,
+    candidate_label: str,
+    save: bool = False,
+    show: bool = True,
+) -> None:
     merged = merged.sort_values("task").reset_index(drop=True)
     x = range(len(merged))
 
@@ -132,11 +138,19 @@ def plot_grouped_bars(merged: pd.DataFrame, out_dir: Path, baseline_label: str, 
     plt.title("Task Scores: baseline vs candidate")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(out_dir / "task_scores_grouped_bar.png", dpi=180)
+    if save and out_dir is not None:
+        plt.savefig(out_dir / "task_scores_grouped_bar.png", dpi=180)
+    if show:
+        plt.show()
     plt.close()
 
 
-def plot_deltas(merged: pd.DataFrame, out_dir: Path) -> None:
+def plot_deltas(
+    merged: pd.DataFrame,
+    out_dir: Path | None,
+    save: bool = False,
+    show: bool = True,
+) -> None:
     delta_df = merged.copy()
     delta_df = delta_df.sort_values("delta", ascending=False).reset_index(drop=True)
 
@@ -148,7 +162,10 @@ def plot_deltas(merged: pd.DataFrame, out_dir: Path) -> None:
     plt.ylabel("Delta (candidate - baseline)")
     plt.title("Per-task Delta")
     plt.tight_layout()
-    plt.savefig(out_dir / "task_deltas_bar.png", dpi=180)
+    if save and out_dir is not None:
+        plt.savefig(out_dir / "task_deltas_bar.png", dpi=180)
+    if show:
+        plt.show()
     plt.close()
 
 
@@ -169,16 +186,22 @@ def make_summary_table(merged: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Compare two lm-eval runs and create bar plots.")
+    parser = argparse.ArgumentParser(description="Compare two lm-eval runs and plot decay vs no-decay.")
     parser.add_argument("--baseline", required=True, type=Path, help="Path to baseline run root (e.g., no_decay eval dir).")
     parser.add_argument("--candidate", required=True, type=Path, help="Path to candidate run root (e.g., decay eval dir).")
     parser.add_argument("--baseline_label", default="no_decay", help="Label for baseline bars.")
     parser.add_argument("--candidate_label", default="decay", help="Label for candidate bars.")
-    parser.add_argument("--out_dir", required=True, type=Path, help="Directory for plots and CSV outputs.")
+    parser.add_argument(
+        "--save_dir",
+        type=Path,
+        default=None,
+        help="Optional directory to save CSV/PNG artifacts. If unset, plots are only displayed.",
+    )
     args = parser.parse_args()
 
-    out_dir = args.out_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
+    save_dir = args.save_dir
+    if save_dir is not None:
+        save_dir.mkdir(parents=True, exist_ok=True)
 
     baseline_df = load_run(RunInfo(label=args.baseline_label, root=args.baseline))
     candidate_df = load_run(RunInfo(label=args.candidate_label, root=args.candidate))
@@ -192,18 +215,25 @@ def main() -> None:
 
     merged["delta"] = merged[args.candidate_label] - merged[args.baseline_label]
 
-    merged.to_csv(out_dir / "task_comparison.csv", index=False)
     summary = make_summary_table(merged[["task", args.baseline_label, args.candidate_label, "delta"]])
-    summary.to_csv(out_dir / "summary.csv", index=False)
 
-    plot_grouped_bars(merged[["task", args.baseline_label, args.candidate_label]], out_dir, args.baseline_label, args.candidate_label)
-    plot_deltas(merged[["task", "delta"]], out_dir)
+    print(summary.to_string(index=False))
 
-    print("Wrote:")
-    print(f"- {out_dir / 'task_comparison.csv'}")
-    print(f"- {out_dir / 'summary.csv'}")
-    print(f"- {out_dir / 'task_scores_grouped_bar.png'}")
-    print(f"- {out_dir / 'task_deltas_bar.png'}")
+    save = save_dir is not None
+    plot_grouped_bars(
+        merged[["task", args.baseline_label, args.candidate_label]],
+        save_dir,
+        args.baseline_label,
+        args.candidate_label,
+        save=save,
+        show=True,
+    )
+    plot_deltas(merged[["task", "delta"]], save_dir, save=save, show=True)
+
+    if save and save_dir is not None:
+        merged.to_csv(save_dir / "task_comparison.csv", index=False)
+        summary.to_csv(save_dir / "summary.csv", index=False)
+        print(f"Saved artifacts under: {save_dir}")
 
 
 if __name__ == "__main__":

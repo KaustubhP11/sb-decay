@@ -1,6 +1,6 @@
 # SmolLM3 Eval Plotting
 
-Compare `no_decay` vs `decay` eval runs and generate simple bar plots.
+Compare `no_decay` vs `decay` eval runs and visualize directly.
 
 ## What this expects
 
@@ -10,20 +10,22 @@ Examples of roots:
 - `/path/to/no_decay_checkpoint/evals/lm_eval`
 - `/path/to/decay_checkpoint/evals/lm_eval`
 
-## Run
+## Preferred: Notebook
+
+Use:
+
+`text/evaluation/smollm3/plotting/eval_comparison.ipynb`
+
+## Optional CLI
+
+This displays plots without writing files:
 
 ```bash
 python text/evaluation/smollm3/plotting/plot_eval_comparison.py \
   --baseline /path/to/no_decay_checkpoint/evals/lm_eval \
   --candidate /path/to/decay_checkpoint/evals/lm_eval \
   --baseline_label no_decay \
-  --candidate_label decay \
-  --out_dir text/evaluation/smollm3/plotting/out
+  --candidate_label decay
 ```
 
-## Outputs
-
-- `task_comparison.csv`: per-task scores for both runs + delta
-- `summary.csv`: aggregate summary
-- `task_scores_grouped_bar.png`: grouped bars (baseline vs candidate)
-- `task_deltas_bar.png`: bar plot of per-task delta (`candidate - baseline`)
+If you explicitly want artifacts, pass `--save_dir /path/to/output`.
