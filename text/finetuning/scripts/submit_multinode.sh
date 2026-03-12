@@ -15,6 +15,7 @@ export GPUS_PER_NODE="${SLURM_GPUS_ON_NODE:-4}"
 export NNODES="${SLURM_NNODES:-1}"
 export MASTER_PORT="${MASTER_PORT:-29500}"
 export MASTER_ADDR="${MASTER_ADDR:-$(scontrol show hostnames "${SLURM_JOB_NODELIST}" | head -n 1)}"
+export NODE_RANK="${NODE_RANK:-${SLURM_NODEID:-0}}"
 
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
-srun --ntasks="${NNODES}" --ntasks-per-node=1 bash text/finetuning/scripts/multi_node.sh
+bash text/finetuning/scripts/multi_node.sh
