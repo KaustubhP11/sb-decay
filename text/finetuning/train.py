@@ -23,6 +23,7 @@ from transformers import (
     logging,
     set_seed,
 )
+import wandb
 from trl import SFTConfig, SFTTrainer
 
 THINK_OPEN_RE = re.compile(r"<<\s*think\s*>", flags=re.IGNORECASE)

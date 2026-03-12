@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=smollm3-sft
-#SBATCH --nodes=1
+#SBATCH --nodes=4
 #SBATCH --gres=gpu:4
 #SBATCH --qos=normal
 #SBATCH --time=11:30:00
