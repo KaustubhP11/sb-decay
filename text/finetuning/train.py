@@ -65,6 +65,7 @@ def _map_yaml_keys_to_args(cfg):
         "max_length": "max_seq_length",
         "per_device_train_batch_size": "micro_batch_size",
         "dataset_num_proc": "num_proc",
+        "data_dir": "subset",
         "dtype": "dtype",
     }
     mapped = {}
@@ -168,7 +169,7 @@ def get_args():
     parser.add_argument("--model_id", type=str, default="HuggingFaceTB/SmolLM2-1.7B")
     parser.add_argument("--tokenizer_id", type=str, default="")
     parser.add_argument("--dataset_name", type=str, default="bigcode/the-stack-smol")
-    parser.add_argument("--subset", type=str, default="data/python")
+    parser.add_argument("--subset", type=str, default=None)
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument("--streaming", type=str2bool, default=False)
     parser.add_argument("--dataset_text_field", type=str, default="content")
@@ -258,14 +259,16 @@ def main(args):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    data = load_dataset(
-        args.dataset_name,
-        data_dir=args.subset,
-        split=args.split,
-        token=token,
-        num_proc=args.num_proc if args.num_proc or args.streaming else multiprocessing.cpu_count(),
-        streaming=args.streaming,
-    )
+    dataset_kwargs = {
+        "split": args.split,
+        "token": token,
+        "num_proc": args.num_proc if args.num_proc or args.streaming else multiprocessing.cpu_count(),
+        "streaming": args.streaming,
+    }
+    if args.subset:
+        dataset_kwargs["data_dir"] = args.subset
+
+    data = load_dataset(args.dataset_name, **dataset_kwargs)
 
     model = get_peft_model(model, lora_config)
 
