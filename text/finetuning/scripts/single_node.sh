@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-
-
 ACCELERATE_CONFIG="${ACCELERATE_CONFIG:-text/finetuning/configs/zero3.yaml}"
 TRAIN_CONFIG="${TRAIN_CONFIG:-text/finetuning/configs/sft_full.yaml}"
 GPUS_PER_NODE="${GPUS_PER_NODE:-4}"
