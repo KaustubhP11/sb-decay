@@ -10,6 +10,9 @@ answer_only_loss: true
 question_field: question
 answer_field: answer
 dataset_num_proc: 8
+dataset_download_mode: reuse_dataset_if_exists
+# dataset_cache_dir: /path/to/your/hf_datasets_cache
+# offline: true
 
 # Hyperparameters
 learning_rate: 1.0e-4
@@ -31,3 +34,6 @@ save_total_limit: 3
 
 # Hub
 push_to_hub: false
+
+# Finetuning mode
+use_lora: false

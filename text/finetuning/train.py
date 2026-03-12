@@ -172,7 +172,11 @@ def get_args():
     parser.add_argument("--subset", type=str, default=None)
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument("--streaming", type=str2bool, default=False)
+    parser.add_argument("--offline", type=str2bool, default=False)
+    parser.add_argument("--dataset_cache_dir", type=str, default=None)
+    parser.add_argument("--dataset_download_mode", type=str, default="reuse_dataset_if_exists")
     parser.add_argument("--dataset_text_field", type=str, default="content")
+    parser.add_argument("--dataset_load_from_cache_file", type=str2bool, default=True)
     parser.add_argument("--answer_only_loss", type=str2bool, default=False)
     parser.add_argument("--question_field", type=str, default="question")
     parser.add_argument("--answer_field", type=str, default="answer")
@@ -188,6 +192,7 @@ def get_args():
     parser.add_argument("--gradient_checkpointing", type=str2bool, default=False)
 
     parser.add_argument("--use_bnb", type=str2bool, default=False)
+    parser.add_argument("--use_lora", type=str2bool, default=False)
     parser.add_argument("--attention_dropout", type=float, default=0.1)
     parser.add_argument("--attn_implementation", type=str, default="flash_attention_2")
     parser.add_argument("--learning_rate", type=float, default=2e-4)
@@ -229,14 +234,16 @@ def get_args():
 
 def main(args):
     # config
-    lora_config = LoraConfig(
-        r=16,
-        lora_alpha=32,
-        lora_dropout=0.05,
-        target_modules=["q_proj", "v_proj"],
-        bias="none",
-        task_type="CAUSAL_LM",
-    )
+    lora_config = None
+    if args.use_lora:
+        lora_config = LoraConfig(
+            r=16,
+            lora_alpha=32,
+            lora_dropout=0.05,
+            target_modules=["q_proj", "v_proj"],
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
     bnb_config = None
     if args.use_bnb:
         bnb_config = BitsAndBytesConfig(
@@ -246,6 +253,11 @@ def main(args):
         )
     # load model and dataset
     token = os.environ.get("HF_TOKEN", None)
+    if args.offline:
+        os.environ["HF_DATASETS_OFFLINE"] = "1"
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        token = None
+
     model_kwargs = {
         "quantization_config": bnb_config,
         "device_map": {"": PartialState().process_index},
@@ -264,13 +276,17 @@ def main(args):
         "token": token,
         "num_proc": args.num_proc if args.num_proc or args.streaming else multiprocessing.cpu_count(),
         "streaming": args.streaming,
+        "download_mode": args.dataset_download_mode,
     }
+    if args.dataset_cache_dir:
+        dataset_kwargs["cache_dir"] = args.dataset_cache_dir
     if args.subset:
         dataset_kwargs["data_dir"] = args.subset
 
     data = load_dataset(args.dataset_name, **dataset_kwargs)
 
-    model = get_peft_model(model, lora_config)
+    if args.use_lora:
+        model = get_peft_model(model, lora_config)
 
     # set wandb project/entity via environment if provided, so Trainer/SFTTrainer
     # pick it up when they call wandb.init(). This avoids duplicate run creation.
@@ -283,22 +299,26 @@ def main(args):
         qa_data = data.map(
             lambda ex: _build_qa_pair(ex, args.question_field, args.answer_field),
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+            load_from_cache_file=args.dataset_load_from_cache_file,
             desc="Building Question/Answer fields",
         )
         qa_data = qa_data.filter(
             lambda ex: len(ex["completion"].strip()) > 0,
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+            load_from_cache_file=args.dataset_load_from_cache_file,
             desc="Dropping empty answers",
         )
         train_data = qa_data.map(
             lambda ex: _tokenize_answer_only(ex, tokenizer, args.max_seq_length),
             remove_columns=qa_data.column_names,
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+            load_from_cache_file=args.dataset_load_from_cache_file,
             desc="Tokenizing with answer-only loss mask",
         )
         train_data = train_data.filter(
             lambda ex: any(label != -100 for label in ex["labels"]),
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+            load_from_cache_file=args.dataset_load_from_cache_file,
             desc="Dropping rows with no completion tokens",
         )
 
