@@ -2,6 +2,10 @@
 set -euo pipefail
 set -x
 
+mkdir -p $SCRATCH/triton_cache
+
+export TRITON_CACHE_DIR=$SCRATCH/triton_cache
+
 ACCELERATE_CONFIG="${ACCELERATE_CONFIG:-text/finetuning/configs/zero3.yaml}"
 TRAIN_CONFIG="${TRAIN_CONFIG:-text/finetuning/configs/sft_full.yaml}"
 
