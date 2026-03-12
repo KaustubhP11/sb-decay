@@ -67,3 +67,39 @@ If you want to fine-tune on other text datasets, you need to change `dataset_tex
 > `huggingface`.
 
 
+
+### Swiss-style YAML flow
+
+Two editable YAMLs:
+- `configs/zero3.yaml` (Accelerate + DeepSpeed)
+- `configs/sft_full.yaml` (training args)
+
+Scripts (only 3):
+- `scripts/single_node.sh`
+- `scripts/multi_node.sh`
+- `scripts/submit_multinode.sh`
+
+Single node:
+
+```bash
+cd /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning
+ACCELERATE_CONFIG=configs/zero3.yaml \
+TRAIN_CONFIG=configs/sft_full.yaml \
+bash scripts/single_node.sh
+```
+
+Multi node (run under SLURM):
+
+```bash
+ACCELERATE_CONFIG=/Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/configs/zero3.yaml \
+TRAIN_CONFIG=/Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/configs/sft_full.yaml \
+sbatch /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/scripts/submit_multinode.sh
+```
+
+Direct command (no wrapper):
+
+```bash
+cd /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning
+accelerate launch --config_file configs/zero3.yaml \
+  sft_train.py --config configs/sft_full.yaml
+```

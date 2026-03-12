@@ -5,3 +5,4 @@ accelerate
 datasets
 wandb
 bitsandbytes
+pyyaml
