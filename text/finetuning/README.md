@@ -52,8 +52,18 @@ accelerate launch train.py \
         --learning_rate 3e-4 \
         --warmup_steps 100 \
         --num_proc "$(nproc)"
+    # optionally specify a different wandb project/entity
+    --wandb_project "my-project" \
+    --wandb_entity "my-team"
 ```
 
 If you want to fine-tune on other text datasets, you need to change `dataset_text_field` argument to the name of the column containing the code/text you want to train on.
+
+> **WandB project**
+> You can control which project the run is logged to either by passing
+> `--wandb_project`/`--wandb_entity` to `train.py` or by setting the
+> `WANDB_PROJECT`/`WANDB_ENTITY` environment variables.  The script
+> initialises `wandb` explicitly so it no longer defaults to
+> `huggingface`.
 
 

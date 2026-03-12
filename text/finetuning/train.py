@@ -20,6 +20,7 @@ from transformers import (
     logging,
     set_seed,
 )
+import wandb
 from trl import SFTConfig, SFTTrainer
 
 THINK_OPEN_RE = re.compile(r"<<\s*think\s*>", flags=re.IGNORECASE)
@@ -140,9 +141,14 @@ def get_args():
     parser.add_argument("--warmup_steps", type=int, default=100)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--output_dir", type=str, default="finetune_smollm2_python")
-    parser.add_argument("--num_proc", type=int, default=16)
+    parser.add_argument("--num_proc", type=int, default=128)
     parser.add_argument("--push_to_hub", type=str2bool, default=False)
     parser.add_argument("--repo_id", type=str, default="SmolLM2-1.7B-finetune")
+    # wandb options
+    parser.add_argument("--wandb_project", type=str, default="midtraining-sft",
+                        help="WandB project name (overrides WANDB_PROJECT env var)")
+    parser.add_argument("--wandb_entity", type=str, default="ponkshekaustubh11",
+                        help="WandB entity (user or team) to log under")
     return parser.parse_args()
 
 
@@ -185,6 +191,13 @@ def main(args):
     )
 
     model = get_peft_model(model, lora_config)
+
+    # set wandb project/entity via environment if provided, so Trainer/SFTTrainer
+    # pick it up when they call wandb.init(). This avoids duplicate run creation.
+    if args.wandb_project:
+        os.environ["WANDB_PROJECT"] = args.wandb_project
+    if args.wandb_entity:
+        os.environ["WANDB_ENTITY"] = args.wandb_entity
 
     if args.answer_only_loss:
         qa_data = data.map(
