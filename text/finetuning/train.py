@@ -306,6 +306,7 @@ def main(args):
     process_index = PartialState().process_index
     transform_cache_dir = os.path.join(args.output_dir, ".hf_transforms", f"rank{process_index}")
     os.makedirs(transform_cache_dir, exist_ok=True)
+    tokenization_cache_tag = f"answer_only_v2_len{args.max_seq_length}_rightpad"
 
     if args.answer_only_loss:
         qa_data = data.map(
@@ -327,14 +328,14 @@ def main(args):
             remove_columns=qa_data.column_names,
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
             load_from_cache_file=args.dataset_load_from_cache_file,
-            cache_file_name=os.path.join(transform_cache_dir, "tokenized_map.arrow"),
+            cache_file_name=os.path.join(transform_cache_dir, f"{tokenization_cache_tag}_map.arrow"),
             desc="Tokenizing with answer-only loss mask",
         )
         train_data = train_data.filter(
             lambda ex: any(label != -100 for label in ex["labels"]),
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
             load_from_cache_file=args.dataset_load_from_cache_file,
-            cache_file_name=os.path.join(transform_cache_dir, "tokenized_filter.arrow"),
+            cache_file_name=os.path.join(transform_cache_dir, f"{tokenization_cache_tag}_filter.arrow"),
             desc="Dropping rows with no completion tokens",
         )
 
