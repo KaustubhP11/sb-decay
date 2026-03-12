@@ -136,19 +136,25 @@ def _tokenize_answer_only(example, tokenizer, max_seq_length):
         add_special_tokens=True,
         truncation=True,
         max_length=max_seq_length,
+        padding="max_length",
     )
     full_tok = tokenizer(
         f"{prompt} {completion}".strip(),
         add_special_tokens=True,
         truncation=True,
         max_length=max_seq_length,
+        padding="max_length",
     )
 
     input_ids = full_tok["input_ids"]
     attention_mask = full_tok["attention_mask"]
-    prompt_len = min(len(prompt_tok["input_ids"]), len(input_ids))
+    prompt_len = min(sum(prompt_tok["attention_mask"]), sum(attention_mask))
     labels = input_ids.copy()
     labels[:prompt_len] = [-100] * prompt_len
+    labels = [
+        label if mask == 1 else -100
+        for label, mask in zip(labels, attention_mask)
+    ]
 
     return {
         "input_ids": input_ids,
@@ -271,6 +277,7 @@ def main(args):
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_id or args.model_id)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
 
     dataset_kwargs = {
         "split": args.split,
