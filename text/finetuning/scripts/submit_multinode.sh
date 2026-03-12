@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=smollm3-sft
 #SBATCH --nodes=4
+#SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:4
 #SBATCH --qos=normal
 #SBATCH --time=11:30:00
@@ -12,7 +13,6 @@ mkdir -p logs
 
 export GPUS_PER_NODE="${SLURM_GPUS_ON_NODE:-4}"
 export NNODES="${SLURM_NNODES:-1}"
-export NODE_RANK="${SLURM_NODEID:-0}"
 export MASTER_PORT="${MASTER_PORT:-29500}"
 
 if [[ "${NNODES}" -gt 1 ]]; then
@@ -21,4 +21,9 @@ else
   export MASTER_ADDR="127.0.0.1"
 fi
 
-bash text/finetuning/scripts/multi_node.sh
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
+
+srun --ntasks="${NNODES}" --ntasks-per-node=1 bash -lc '
+  export NODE_RANK="${SLURM_NODEID}"
+  bash text/finetuning/scripts/multi_node.sh
+'
