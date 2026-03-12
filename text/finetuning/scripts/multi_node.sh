@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 
 ACCELERATE_CONFIG="${ACCELERATE_CONFIG:-text/finetuning/configs/zero3.yaml}"
 TRAIN_CONFIG="${TRAIN_CONFIG:-text/finetuning/configs/sft_full.yaml}"
@@ -13,7 +14,7 @@ MASTER_PORT=12802
 
 accelerate launch \
   --config_file "${ACCELERATE_CONFIG}" \
-  --num_processes "$ACCEL_PROCS" \
+  --num_processes "$SLURM_GPUS_PER_NODE" \
   --num_machines "${SLURM_NNODES}" \
   --machine_rank $SLURM_PROCID \
   --main_process_ip "${MASTER_ADDR}" \

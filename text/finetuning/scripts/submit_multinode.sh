@@ -8,5 +8,6 @@
 #SBATCH --output=./logs/train-%j.out
 #SBATCH --error=./logs/train-%j.err
 
+set -x
 
-bash text/finetuning/scripts/multi_node.sh
+srun text/finetuning/scripts/multi_node.sh
