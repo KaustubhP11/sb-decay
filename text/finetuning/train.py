@@ -295,17 +295,23 @@ def main(args):
     if args.wandb_entity:
         os.environ["WANDB_ENTITY"] = args.wandb_entity
 
+    process_index = PartialState().process_index
+    transform_cache_dir = os.path.join(args.output_dir, ".hf_transforms", f"rank{process_index}")
+    os.makedirs(transform_cache_dir, exist_ok=True)
+
     if args.answer_only_loss:
         qa_data = data.map(
             lambda ex: _build_qa_pair(ex, args.question_field, args.answer_field),
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
             load_from_cache_file=args.dataset_load_from_cache_file,
+            cache_file_name=os.path.join(transform_cache_dir, "qa_map.arrow"),
             desc="Building Question/Answer fields",
         )
         qa_data = qa_data.filter(
             lambda ex: len(ex["completion"].strip()) > 0,
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
             load_from_cache_file=args.dataset_load_from_cache_file,
+            cache_file_name=os.path.join(transform_cache_dir, "qa_filter.arrow"),
             desc="Dropping empty answers",
         )
         train_data = qa_data.map(
@@ -313,12 +319,14 @@ def main(args):
             remove_columns=qa_data.column_names,
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
             load_from_cache_file=args.dataset_load_from_cache_file,
+            cache_file_name=os.path.join(transform_cache_dir, "tokenized_map.arrow"),
             desc="Tokenizing with answer-only loss mask",
         )
         train_data = train_data.filter(
             lambda ex: any(label != -100 for label in ex["labels"]),
             num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
             load_from_cache_file=args.dataset_load_from_cache_file,
+            cache_file_name=os.path.join(transform_cache_dir, "tokenized_filter.arrow"),
             desc="Dropping rows with no completion tokens",
         )
 
