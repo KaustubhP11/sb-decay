@@ -3,8 +3,13 @@ set -euo pipefail
 set -x
 
 cd /iopsstor/scratch/cscs/kponkshe/sb-decay
+
+# Conda activate/deactivate hooks may read unset CONDA_BACKUP_* vars.
+# Run activation with nounset disabled, then restore strict mode.
+set +u
 source /users/kponkshe/miniconda3/etc/profile.d/conda.sh
 conda activate .oss
+set -u
 export CUDA_LAUNCH_BLOCKING=1
 export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export NCCL_DEBUG=INFO
