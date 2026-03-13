@@ -14,6 +14,8 @@ dataset_download_mode: reuse_dataset_if_exists
 # dataset_cache_dir: /path/to/your/hf_datasets_cache
 # offline: true
 
+torch_compile: true
+
 # Hyperparameters
 learning_rate: 1.0e-4
 gradient_checkpointing: false

@@ -176,7 +176,7 @@ __pycache__/
 **/.*/
 **/.*/**
 **/core_*
-
+.env
 **/wandb/
 text/finetuning/wandb/
 text/pretraining/smollm3/.resume_*.yaml

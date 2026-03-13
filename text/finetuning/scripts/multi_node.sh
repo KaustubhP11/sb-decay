@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-set -x
+
+set -a 
+source .env
+set +a
+
+# set -x
 
 cd /iopsstor/scratch/cscs/kponkshe/sb-decay
 
@@ -32,15 +37,13 @@ cd /iopsstor/scratch/cscs/kponkshe/sb-decay
 # unset LD_PRELOAD
 
 # TORCH_NVIDIA_LIBS="$(python -c 'import os,site; sp=next((p for p in site.getsitepackages() if os.path.isdir(p)),""); c=[os.path.join(sp,"nvidia","nvjitlink","lib"), os.path.join(sp,"nvidia","cusparse","lib"), os.path.join(sp,"nvidia","cublas","lib"), os.path.join(sp,"nvidia","cuda_runtime","lib"), os.path.join(sp,"nvidia","cudnn","lib")]; print(":".join(p for p in c if os.path.isdir(p)))')"
-pip install --no-cache-dir -r text/finetuning/requirements.txt "torch==$(python -c 'import torch; print(torch.__version__)')"
-
-
+pip install --no-build-isolation --no-cache-dir -r text/finetuning/requirements.txt "torch==$(python -c 'import torch; print(torch.__version__)')"
 
 # export LD_LIBRARY_PATH="${TORCH_NVIDIA_LIBS:+${TORCH_NVIDIA_LIBS}:}${CONDA_PREFIX}/lib${LD_LIBRARY_PATH_CLEANED:+:${LD_LIBRARY_PATH_CLEANED}}"
-export CUDA_LAUNCH_BLOCKING=1
-export TORCH_DISTRIBUTED_DEBUG=DETAIL
-export NCCL_DEBUG=INFO
-export ACCELERATE_LOG_LEVEL=info
+# export CUDA_LAUNCH_BLOCKING=1
+# export TORCH_DISTRIBUTED_DEBUG=DETAIL
+# export NCCL_DEBUG=INFO
+# export ACCELERATE_LOG_LEVEL=info
 
 SCRATCH_BASE="${SCRATCH:-/tmp/${USER}}"
 mkdir -p "${SCRATCH_BASE}/triton_cache"
