@@ -44,6 +44,14 @@ mkdir -p "${SCRATCH_BASE}/triton_cache"
 
 export TRITON_CACHE_DIR="${SCRATCH_BASE}/triton_cache"
 
+# Shared/mounted filesystems may not support flock(), which HF datasets uses.
+# Keep HF caches on node-local storage to avoid "No locks available".
+HF_CACHE_BASE="${SCRATCH_BASE}/hf-cache"
+mkdir -p "${HF_CACHE_BASE}/datasets" "${HF_CACHE_BASE}/hub"
+export HF_HOME="${HF_CACHE_BASE}"
+export HF_DATASETS_CACHE="${HF_CACHE_BASE}/datasets"
+export HF_HUB_CACHE="${HF_CACHE_BASE}/hub"
+
 ACCELERATE_CONFIG="${ACCELERATE_CONFIG:-text/finetuning/configs/zero3.yaml}"
 TRAIN_CONFIG="${TRAIN_CONFIG:-text/finetuning/configs/sft_full.yaml}"
 PYTHON_BIN="${CONDA_PREFIX}/bin/python"
