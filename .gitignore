@@ -175,7 +175,8 @@ __pycache__/
 # Ignore hidden directories recursively (and everything under them)
 **/.*/
 **/.*/**
-**/core_nid*
+**/core_*
+
 **/wandb/
 text/finetuning/wandb/
 text/pretraining/smollm3/.resume_*.yaml

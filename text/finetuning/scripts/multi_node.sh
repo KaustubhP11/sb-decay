@@ -6,34 +6,37 @@ cd /iopsstor/scratch/cscs/kponkshe/sb-decay
 
 # Conda activate/deactivate hooks may read unset CONDA_BACKUP_* vars.
 # Run activation with nounset disabled, then restore strict mode.
-set +u
-source /users/kponkshe/miniconda3/etc/profile.d/conda.sh
-conda activate .oss
-set -u
+# set +u
+# source /users/kponkshe/miniconda3/etc/profile.d/conda.sh
+# conda activate .oss
+# set -u
 
 # Keep Python imports bound to the active Conda env.
-unset PYTHONHOME
-export PYTHONNOUSERSITE=1
-PYTHONPATH_CLEANED="$(printf '%s' "${PYTHONPATH:-}" | awk -v RS=: -v ORS=: '
-  $0 !~ "^/usr/local/lib/python[0-9.]+/dist-packages(/|$)" &&
-  $0 !~ "^/usr/lib/python[0-9.]+/dist-packages(/|$)" &&
-  $0 != ""
-')"
-PYTHONPATH_CLEANED="${PYTHONPATH_CLEANED%:}"
-if [ -n "${PYTHONPATH_CLEANED}" ]; then
-  export PYTHONPATH="${PYTHONPATH_CLEANED}"
-else
-  unset PYTHONPATH
-fi
+# unset PYTHONHOME
+# export PYTHONNOUSERSITE=1
+# PYTHONPATH_CLEANED="$(printf '%s' "${PYTHONPATH:-}" | awk -v RS=: -v ORS=: '
+#   $0 !~ "^/usr/local/lib/python[0-9.]+/dist-packages(/|$)" &&
+#   $0 !~ "^/usr/lib/python[0-9.]+/dist-packages(/|$)" &&
+#   $0 != ""
+# ')"
+# PYTHONPATH_CLEANED="${PYTHONPATH_CLEANED%:}"
+# if [ -n "${PYTHONPATH_CLEANED}" ]; then
+#   export PYTHONPATH="${PYTHONPATH_CLEANED}"
+# else
+#   unset PYTHONPATH
+# fi
 
-# Avoid mixing system CUDA libs with Conda/PyTorch CUDA libs.
-# The mismatch commonly shows up as missing nvJitLink symbols in libcusparse.
-LD_LIBRARY_PATH_CLEANED=""
-unset LD_PRELOAD
+# # Avoid mixing system CUDA libs with Conda/PyTorch CUDA libs.
+# # The mismatch commonly shows up as missing nvJitLink symbols in libcusparse.
+# LD_LIBRARY_PATH_CLEANED=""
+# unset LD_PRELOAD
 
-TORCH_NVIDIA_LIBS="$(python -c 'import os,site; sp=next((p for p in site.getsitepackages() if os.path.isdir(p)),""); c=[os.path.join(sp,"nvidia","nvjitlink","lib"), os.path.join(sp,"nvidia","cusparse","lib"), os.path.join(sp,"nvidia","cublas","lib"), os.path.join(sp,"nvidia","cuda_runtime","lib"), os.path.join(sp,"nvidia","cudnn","lib")]; print(":".join(p for p in c if os.path.isdir(p)))')"
+# TORCH_NVIDIA_LIBS="$(python -c 'import os,site; sp=next((p for p in site.getsitepackages() if os.path.isdir(p)),""); c=[os.path.join(sp,"nvidia","nvjitlink","lib"), os.path.join(sp,"nvidia","cusparse","lib"), os.path.join(sp,"nvidia","cublas","lib"), os.path.join(sp,"nvidia","cuda_runtime","lib"), os.path.join(sp,"nvidia","cudnn","lib")]; print(":".join(p for p in c if os.path.isdir(p)))')"
+pip install --no-cache-dir -r text/finetuning/requirements.txt "torch==$(python -c 'import torch; print(torch.__version__)')"
 
-export LD_LIBRARY_PATH="${TORCH_NVIDIA_LIBS:+${TORCH_NVIDIA_LIBS}:}${CONDA_PREFIX}/lib${LD_LIBRARY_PATH_CLEANED:+:${LD_LIBRARY_PATH_CLEANED}}"
+
+
+# export LD_LIBRARY_PATH="${TORCH_NVIDIA_LIBS:+${TORCH_NVIDIA_LIBS}:}${CONDA_PREFIX}/lib${LD_LIBRARY_PATH_CLEANED:+:${LD_LIBRARY_PATH_CLEANED}}"
 export CUDA_LAUNCH_BLOCKING=1
 export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export NCCL_DEBUG=INFO
@@ -54,7 +57,7 @@ export HF_HUB_CACHE="${HF_CACHE_BASE}/hub"
 
 ACCELERATE_CONFIG="${ACCELERATE_CONFIG:-text/finetuning/configs/zero3.yaml}"
 TRAIN_CONFIG="${TRAIN_CONFIG:-text/finetuning/configs/sft_full.yaml}"
-PYTHON_BIN="${CONDA_PREFIX}/bin/python"
+# PYTHON_BIN="${CONDA_PREFIX}/bin/python"
 
 ACCEL_PROCS=$(( $SLURM_NNODES * $SLURM_GPUS_PER_NODE ))
 
@@ -63,7 +66,7 @@ MASTER_PORT=12802
 
 
 
-"${PYTHON_BIN}" -m accelerate.commands.launch \
+accelerate launch \
   --config_file "${ACCELERATE_CONFIG}" \
   --num_processes "$ACCEL_PROCS" \
   --num_machines "${SLURM_NNODES}" \

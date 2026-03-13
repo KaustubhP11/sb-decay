@@ -7,8 +7,7 @@ deepspeed_config:
   zero3_save_16bit_model: false
   zero_stage: 2
 distributed_type: DEEPSPEED
-dynamo_config:
-  dynamo_backend: AOT_EAGER
+
 downcast_bf16: "no"
 main_training_function: main
 mixed_precision: bf16

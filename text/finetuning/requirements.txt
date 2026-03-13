@@ -3,6 +3,7 @@ trl>=0.15
 peft
 accelerate
 datasets
+deepspeed
 wandb
 bitsandbytes
 pyyaml
