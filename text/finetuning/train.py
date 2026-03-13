@@ -267,7 +267,7 @@ def main(args):
 
     model_kwargs = {
         "quantization_config": bnb_config,
-        "device_map": {"": PartialState().process_index},
+        # "device_map": "auto",
         "attention_dropout": args.attention_dropout,
     }
     if args.attn_implementation and args.attn_implementation.lower() != "auto":
@@ -303,41 +303,52 @@ def main(args):
     if args.wandb_entity:
         os.environ["WANDB_ENTITY"] = args.wandb_entity
 
-    process_index = PartialState().process_index
-    transform_cache_dir = os.path.join(args.output_dir, ".hf_transforms", f"rank{process_index}")
+    state = PartialState()
+    process_index = state.process_index
+    transform_cache_dir = os.path.join(args.output_dir, ".hf_transforms", f"rank")
     os.makedirs(transform_cache_dir, exist_ok=True)
     tokenization_cache_tag = f"answer_only_v2_len{args.max_seq_length}_rightpad"
 
     if args.answer_only_loss:
-        qa_data = data.map(
-            lambda ex: _build_qa_pair(ex, args.question_field, args.answer_field),
-            num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
-            load_from_cache_file=args.dataset_load_from_cache_file,
-            cache_file_name=os.path.join(transform_cache_dir, "qa_map.arrow"),
-            desc="Building Question/Answer fields",
-        )
-        qa_data = qa_data.filter(
-            lambda ex: len(ex["completion"].strip()) > 0,
-            num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
-            load_from_cache_file=args.dataset_load_from_cache_file,
-            cache_file_name=os.path.join(transform_cache_dir, "qa_filter.arrow"),
-            desc="Dropping empty answers",
-        )
-        train_data = qa_data.map(
-            lambda ex: _tokenize_answer_only(ex, tokenizer, args.max_seq_length),
-            remove_columns=qa_data.column_names,
-            num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
-            load_from_cache_file=args.dataset_load_from_cache_file,
-            cache_file_name=os.path.join(transform_cache_dir, f"{tokenization_cache_tag}_map.arrow"),
-            desc="Tokenizing with answer-only loss mask",
-        )
-        train_data = train_data.filter(
-            lambda ex: any(label != -100 for label in ex["labels"]),
-            num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
-            load_from_cache_file=args.dataset_load_from_cache_file,
-            cache_file_name=os.path.join(transform_cache_dir, f"{tokenization_cache_tag}_filter.arrow"),
-            desc="Dropping rows with no completion tokens",
-        )
+        def build_dataset():
+            qa_data = data.map(
+                lambda ex: _build_qa_pair(ex, args.question_field, args.answer_field),
+                num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+                load_from_cache_file=args.dataset_load_from_cache_file,
+                cache_file_name=os.path.join(transform_cache_dir, "qa_map.arrow"),
+                desc="Building Question/Answer fields",
+            )
+            qa_data = qa_data.filter(
+                lambda ex: len(ex["completion"].strip()) > 0,
+                num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+                load_from_cache_file=args.dataset_load_from_cache_file,
+                cache_file_name=os.path.join(transform_cache_dir, "qa_filter.arrow"),
+                desc="Dropping empty answers",
+            )
+            train_data = qa_data.map(
+                lambda ex: _tokenize_answer_only(ex, tokenizer, args.max_seq_length),
+                remove_columns=qa_data.column_names,
+                num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+                load_from_cache_file=args.dataset_load_from_cache_file,
+                cache_file_name=os.path.join(transform_cache_dir, f"{tokenization_cache_tag}_map.arrow"),
+                desc="Tokenizing with answer-only loss mask",
+            )
+            train_data = train_data.filter(
+                lambda ex: any(label != -100 for label in ex["labels"]),
+                num_proc=args.num_proc if args.num_proc else multiprocessing.cpu_count(),
+                load_from_cache_file=args.dataset_load_from_cache_file,
+                cache_file_name=os.path.join(transform_cache_dir, f"{tokenization_cache_tag}_filter.arrow"),
+                desc="Dropping rows with no completion tokens",
+            )
+
+            return train_data
+
+        if process_index == 0:
+            print("Processing dataset for answer-only loss...")
+            train_data = build_dataset()
+
+        state.wait_for_everyone()
+        train_data = build_dataset()
 
         training_kwargs = dict(
             per_device_train_batch_size=args.micro_batch_size,
@@ -395,7 +406,7 @@ def main(args):
             logging_strategy="steps",
             logging_steps=args.logging_steps,
             output_dir=args.output_dir,
-            optim="paged_adamw_8bit",
+            optim="adamw_torch_fused" if not args.use_bnb else "paged_adamw_8bit",
             save_strategy="steps",
             save_steps=args.checkpointing_steps,
             save_total_limit=args.save_total_limit,

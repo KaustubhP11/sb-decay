@@ -1,13 +1,14 @@
-compute_environment: LOCAL_MACHINE
 debug: false
 deepspeed_config:
   deepspeed_multinode_launcher: standard
   offload_optimizer_device: none
   offload_param_device: none
   zero3_init_flag: true
-  zero3_save_16bit_model: true
+  zero3_save_16bit_model: false
   zero_stage: 2
 distributed_type: DEEPSPEED
+dynamo_config:
+  dynamo_backend: AOT_EAGER
 downcast_bf16: "no"
 main_training_function: main
 mixed_precision: bf16

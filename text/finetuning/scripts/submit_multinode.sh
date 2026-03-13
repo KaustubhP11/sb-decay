@@ -10,4 +10,4 @@
 
 set -x
 
-srun text/finetuning/scripts/multi_node.sh
+srun  --environment=/iopsstor/scratch/cscs/kponkshe/Megatron-LM/ncg_new_v2.toml --export=ALL /iopsstor/scratch/cscs/kponkshe/sb-decay/text/finetuning/scripts/multi_node.sh

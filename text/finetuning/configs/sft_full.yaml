@@ -9,17 +9,17 @@ split: train
 answer_only_loss: true
 question_field: question
 answer_field: answer
-dataset_num_proc: 16
+dataset_num_proc: 64
 dataset_download_mode: reuse_dataset_if_exists
 # dataset_cache_dir: /path/to/your/hf_datasets_cache
 # offline: true
 
 # Hyperparameters
 learning_rate: 1.0e-4
-gradient_checkpointing: true
+gradient_checkpointing: false
 num_train_epochs: 1.0
 logging_steps: 10
-per_device_train_batch_size: 4
+per_device_train_batch_size: 1
 gradient_accumulation_steps: 1
 max_length: 4096
 warmup_ratio: 0.03
