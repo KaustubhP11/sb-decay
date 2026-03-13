@@ -11,15 +11,25 @@ source /users/kponkshe/miniconda3/etc/profile.d/conda.sh
 conda activate .oss
 set -u
 
-# Avoid mixing system CUDA libs with Conda/PyTorch CUDA libs.
-# The mismatch commonly shows up as missing nvJitLink symbols in libcusparse.
-LD_LIBRARY_PATH_CLEANED="$(printf '%s' "${LD_LIBRARY_PATH:-}" | awk -v RS=: -v ORS=: '
-  $0 != "/usr/local/cuda/lib64" &&
-  $0 != "/usr/local/cuda/targets/aarch64-linux/lib" &&
-  $0 != "/usr/local/cuda/targets/x86_64-linux/lib" &&
+# Keep Python imports bound to the active Conda env.
+unset PYTHONHOME
+export PYTHONNOUSERSITE=1
+PYTHONPATH_CLEANED="$(printf '%s' "${PYTHONPATH:-}" | awk -v RS=: -v ORS=: '
+  $0 !~ "^/usr/local/lib/python[0-9.]+/dist-packages(/|$)" &&
+  $0 !~ "^/usr/lib/python[0-9.]+/dist-packages(/|$)" &&
   $0 != ""
 ')"
-LD_LIBRARY_PATH_CLEANED="${LD_LIBRARY_PATH_CLEANED%:}"
+PYTHONPATH_CLEANED="${PYTHONPATH_CLEANED%:}"
+if [ -n "${PYTHONPATH_CLEANED}" ]; then
+  export PYTHONPATH="${PYTHONPATH_CLEANED}"
+else
+  unset PYTHONPATH
+fi
+
+# Avoid mixing system CUDA libs with Conda/PyTorch CUDA libs.
+# The mismatch commonly shows up as missing nvJitLink symbols in libcusparse.
+LD_LIBRARY_PATH_CLEANED=""
+unset LD_PRELOAD
 
 TORCH_NVIDIA_LIBS="$(python -c 'import os,site; sp=next((p for p in site.getsitepackages() if os.path.isdir(p)),""); c=[os.path.join(sp,"nvidia","nvjitlink","lib"), os.path.join(sp,"nvidia","cusparse","lib"), os.path.join(sp,"nvidia","cublas","lib"), os.path.join(sp,"nvidia","cuda_runtime","lib"), os.path.join(sp,"nvidia","cudnn","lib")]; print(":".join(p for p in c if os.path.isdir(p)))')"
 
@@ -29,12 +39,14 @@ export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export NCCL_DEBUG=INFO
 export ACCELERATE_LOG_LEVEL=info
 
-mkdir -p $SCRATCH/triton_cache
+SCRATCH_BASE="${SCRATCH:-/tmp/${USER}}"
+mkdir -p "${SCRATCH_BASE}/triton_cache"
 
-export TRITON_CACHE_DIR=$SCRATCH/triton_cache
+export TRITON_CACHE_DIR="${SCRATCH_BASE}/triton_cache"
 
 ACCELERATE_CONFIG="${ACCELERATE_CONFIG:-text/finetuning/configs/zero3.yaml}"
 TRAIN_CONFIG="${TRAIN_CONFIG:-text/finetuning/configs/sft_full.yaml}"
+PYTHON_BIN="${CONDA_PREFIX}/bin/python"
 
 ACCEL_PROCS=$(( $SLURM_NNODES * $SLURM_GPUS_PER_NODE ))
 
@@ -43,7 +55,7 @@ MASTER_PORT=12802
 
 
 
-accelerate launch \
+"${PYTHON_BIN}" -m accelerate.commands.launch \
   --config_file "${ACCELERATE_CONFIG}" \
   --num_processes "$ACCEL_PROCS" \
   --num_machines "${SLURM_NNODES}" \
