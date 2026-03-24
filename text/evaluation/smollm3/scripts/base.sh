@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../../" && pwd)"
 
-MODEL_PATH="${MODEL_PATH:-${REPO_ROOT}/checkpoints/run_decay_dolma/hf}"
+MODEL_PATH="${MODEL_PATH:-${REPO_ROOT}/checkpoints/run_stable_dolma_no_reasoning/hf}"
 OUTPUT_DIR="${OUTPUT_DIR:-${MODEL_PATH}/evals/lm_eval/base}"
 LM_EVAL_MODEL="${LM_EVAL_MODEL:-vllm}"
 TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-2}"

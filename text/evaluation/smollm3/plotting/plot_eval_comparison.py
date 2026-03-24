@@ -34,6 +34,13 @@ PRIMARY_METRIC_CANDIDATES = [
     "score,none",
 ]
 
+TASK_METRIC_OVERRIDES = {
+    "gsm8k": [
+        "exact_match,flexible-extract",
+        "exact_match,strict-match",
+    ],
+}
+
 
 @dataclass
 class RunInfo:
@@ -57,7 +64,12 @@ def find_lm_eval_jsons(root: Path) -> list[Path]:
     return sorted(files)
 
 
-def choose_metric(metrics: dict[str, Any]) -> tuple[str | None, float | None]:
+def choose_metric(task: str, metrics: dict[str, Any]) -> tuple[str | None, float | None]:
+    for metric_name in TASK_METRIC_OVERRIDES.get(task, []):
+        value = metrics.get(metric_name)
+        if isinstance(value, (int, float)):
+            return metric_name, float(value)
+
     for m in PRIMARY_METRIC_CANDIDATES:
         v = metrics.get(m)
         if isinstance(v, (int, float)):
@@ -81,7 +93,7 @@ def parse_result_file(path: Path, run_label: str) -> list[dict[str, Any]]:
     for task, metrics in (data.get("results", {}) or {}).items():
         if not isinstance(metrics, dict):
             continue
-        metric_name, metric_value = choose_metric(metrics)
+        metric_name, metric_value = choose_metric(task, metrics)
         if metric_name is None or metric_value is None:
             continue
         rows.append(

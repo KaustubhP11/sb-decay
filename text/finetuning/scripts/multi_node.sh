@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cd /iopsstor/scratch/cscs/kponkshe/sb-decay
+
 set -a 
 source .env
 set +a
 
 # set -x
-
-cd /iopsstor/scratch/cscs/kponkshe/sb-decay
 
 # Conda activate/deactivate hooks may read unset CONDA_BACKUP_* vars.
 # Run activation with nounset disabled, then restore strict mode.

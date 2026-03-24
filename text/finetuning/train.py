@@ -7,6 +7,10 @@ import multiprocessing
 import os
 import re
 
+import math
+import time
+from transformers import TrainerCallback
+
 import torch
 import transformers
 import yaml
@@ -25,6 +29,78 @@ from transformers import (
 )
 import wandb
 from trl import SFTConfig, SFTTrainer
+
+
+class ThroughputCallback(TrainerCallback):
+    def __init__(self, per_device_train_batch_size, gradient_accumulation_steps, world_size, alpha=0.1):
+        self.per_device_train_batch_size = per_device_train_batch_size
+        self.gradient_accumulation_steps = gradient_accumulation_steps
+        self.world_size = world_size
+        self.alpha = alpha
+
+        self.last_time = None
+        self.last_step = None
+        self.ema_samples_per_second = None
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        self.last_time = time.time()
+        self.last_step = state.global_step
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if logs is None:
+            return
+
+        if not state.is_world_process_zero:
+            return
+
+        now = time.time()
+        current_step = state.global_step
+
+        if self.last_time is None or self.last_step is None:
+            self.last_time = now
+            self.last_step = current_step
+            return
+
+        steps_delta = current_step - self.last_step
+        time_delta = now - self.last_time
+
+        if steps_delta <= 0 or time_delta <= 0:
+            return
+
+        global_batch_size = (
+            self.per_device_train_batch_size
+            * self.gradient_accumulation_steps
+            * self.world_size
+        )
+        samples_delta = steps_delta * global_batch_size
+        inst_samples_per_second = samples_delta / time_delta
+
+        if self.ema_samples_per_second is None:
+            self.ema_samples_per_second = inst_samples_per_second
+        else:
+            self.ema_samples_per_second = (
+                self.alpha * inst_samples_per_second
+                + (1.0 - self.alpha) * self.ema_samples_per_second
+            )
+
+        eta_seconds = None
+        if state.max_steps and state.max_steps > 0 and self.ema_samples_per_second > 0:
+            remaining_steps = state.max_steps - current_step
+            remaining_samples = remaining_steps * global_batch_size
+            eta_seconds = remaining_samples / self.ema_samples_per_second
+
+        logs["samples_per_second"] = round(inst_samples_per_second, 4)
+        logs["ema_samples_per_second"] = round(self.ema_samples_per_second, 4)
+        if eta_seconds is not None:
+            logs["eta_seconds"] = int(eta_seconds)
+            logs["eta_hours"] = round(eta_seconds / 3600.0, 3)
+
+        self.last_time = now
+        self.last_step = current_step
+
+        if wandb.run is not None:
+            wandb.log(logs, step=current_step)
+
 
 THINK_OPEN_RE = re.compile(r"<<\s*think\s*>", flags=re.IGNORECASE)
 THINK_CLOSE_RE = re.compile(r"<</\s*think\s*>", flags=re.IGNORECASE)
@@ -309,6 +385,14 @@ def main(args):
     os.makedirs(transform_cache_dir, exist_ok=True)
     tokenization_cache_tag = f"answer_only_v2_len{args.max_seq_length}_rightpad"
 
+    world_size = state.num_processes
+    throughput_callback = ThroughputCallback(
+        per_device_train_batch_size=args.micro_batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        world_size=world_size,
+        alpha=0.9, # ema smoothing factor for eta
+    )
+
     if args.answer_only_loss:
         def build_dataset():
             qa_data = data.map(
@@ -424,6 +508,9 @@ def main(args):
         )
 
     # launch
+
+    trainer.add_callback(throughput_callback)
+
     print("Training...")
     trainer.train()
     print("Training Done! 💥")
