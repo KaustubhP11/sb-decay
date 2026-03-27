@@ -62,6 +62,13 @@ def _normalize_role(value: Any) -> str:
     return role_map.get(role, role.capitalize() if role else "Unknown")
 
 
+def _format_turn(role: str, content: str) -> str:
+    normalized_lines = [line.rstrip() for line in content.splitlines()]
+    if not normalized_lines:
+        return ""
+    return "\n".join(f"{role}: {line}" for line in normalized_lines)
+
+
 def _conversation_to_text(turns: Any) -> str:
     if not isinstance(turns, list):
         return ""
@@ -76,7 +83,7 @@ def _conversation_to_text(turns: Any) -> str:
                 turn.get("content", turn.get("value", turn.get("text", turn.get("message", ""))))
             )
             if content:
-                lines.append(f"{role}: {content}")
+                lines.append(_format_turn(role, content))
         else:
             content = _stringify_content(turn)
             if content:
@@ -94,19 +101,15 @@ def _to_text(example: dict[str, Any], text_field: str | None) -> dict[str, str]:
     output = _stringify_content(example.get("output"))
     answer = _stringify_content(example.get("answer"))
     chosen = _stringify_content(example.get("chosen"))
-    rejected = _stringify_content(example.get("rejected"))
 
     if prompt and (completion or response or output or answer or chosen):
         assistant_text = completion or response or output or answer or chosen
-        text = f"User: {prompt}\nAssistant: {assistant_text}"
-        if rejected:
-            text += f"\nRejected: {rejected}"
-        return {"text": text}
+        return {"text": _format_turn("User", prompt) + "\n" + _format_turn("Assistant", assistant_text)}
 
     question = _stringify_content(example.get("question"))
     if question and (answer or response or output):
         assistant_text = answer or response or output
-        return {"text": f"User: {question}\nAssistant: {assistant_text}"}
+        return {"text": _format_turn("User", question) + "\n" + _format_turn("Assistant", assistant_text)}
 
     direct_candidates = [
         "text",
@@ -203,6 +206,9 @@ def main() -> None:
     os.makedirs(args.output_dir, exist_ok=True)
     raw_dir = os.path.join(args.output_dir, "raw_parquet")
     os.makedirs(raw_dir, exist_ok=True)
+    for file_name in os.listdir(raw_dir):
+        if file_name.endswith(".parquet"):
+            os.remove(os.path.join(raw_dir, file_name))
 
     print(f"Loading dataset: {args.dataset_id} [{args.split}]")
     if args.streaming and args.max_samples is None:
