@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -87,12 +89,25 @@ def parse_result_file(path: Path, run_label: str) -> list[dict[str, Any]]:
         data = json.load(f)
 
     config = data.get("config", {}) if isinstance(data, dict) else {}
-    num_fewshot = config.get("num_fewshot")
+    task_configs = data.get("configs", {}) if isinstance(data, dict) else {}
+    n_shot_by_task = data.get("n-shot", {}) if isinstance(data, dict) else {}
+    path_match = re.search(r"(?:^|/)(\d+)shot(?:/|$)", str(path))
+    path_num_fewshot = int(path_match.group(1)) if path_match else None
 
     rows: list[dict[str, Any]] = []
     for task, metrics in (data.get("results", {}) or {}).items():
         if not isinstance(metrics, dict):
             continue
+        task_config = task_configs.get(task, {}) if isinstance(task_configs, dict) else {}
+        num_fewshot = task_config.get("num_fewshot")
+        if num_fewshot is None and isinstance(n_shot_by_task, dict):
+            num_fewshot = n_shot_by_task.get(task)
+        if num_fewshot is None:
+            num_fewshot = config.get("num_fewshot")
+        if num_fewshot is None:
+            num_fewshot = path_num_fewshot
+        if num_fewshot is None:
+            num_fewshot = 0
         metric_name, metric_value = choose_metric(task, metrics)
         if metric_name is None or metric_value is None:
             continue
@@ -107,6 +122,32 @@ def parse_result_file(path: Path, run_label: str) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def make_task_label(task: str, num_fewshot: float | int | None) -> str:
+    if num_fewshot is None:
+        return task
+    try:
+        if pd.isna(num_fewshot):
+            return task
+    except TypeError:
+        pass
+    if isinstance(num_fewshot, float) and math.isnan(num_fewshot):
+        return task
+    if num_fewshot == 0:
+        return task
+    return f"{task} ({int(num_fewshot)}-shot)"
+
+
+def should_keep_task(task: str) -> bool:
+    task_lower = task.lower()
+    if task_lower in {"mmlu", "mmlu_pro"}:
+        return True
+    if task_lower.startswith("mmlu_") or task_lower.startswith("mmlu:"):
+        return False
+    if task_lower.startswith("mmlu_pro_") or task_lower.startswith("mmlu_pro:"):
+        return False
+    return True
 
 
 def load_run(run: RunInfo) -> pd.DataFrame:
@@ -128,6 +169,8 @@ def load_run(run: RunInfo) -> pd.DataFrame:
     df = df.sort_values(["task", "metric", "num_fewshot", "source_file"]).drop_duplicates(
         subset=["run", "task", "metric", "num_fewshot"], keep="last"
     )
+    df = df[df["task"].map(should_keep_task)].copy()
+    df["task_label"] = df.apply(lambda row: make_task_label(row["task"], row["num_fewshot"]), axis=1)
     return df.reset_index(drop=True)
 
 
@@ -139,13 +182,13 @@ def plot_grouped_bars(
     save: bool = False,
     show: bool = True,
 ) -> None:
-    merged = merged.sort_values("task").reset_index(drop=True)
+    merged = merged.sort_values("task_label").reset_index(drop=True)
     x = range(len(merged))
 
     plt.figure(figsize=(max(10, len(merged) * 0.4), 6))
     plt.bar([i - 0.2 for i in x], merged[baseline_label], width=0.4, label=baseline_label)
     plt.bar([i + 0.2 for i in x], merged[candidate_label], width=0.4, label=candidate_label)
-    plt.xticks(list(x), merged["task"], rotation=75, ha="right")
+    plt.xticks(list(x), merged["task_label"], rotation=75, ha="right")
     plt.ylabel("Score")
     plt.title("Task Scores: baseline vs candidate")
     plt.legend()
@@ -168,7 +211,7 @@ def plot_deltas(
 
     plt.figure(figsize=(max(10, len(delta_df) * 0.4), 6))
     colors = ["#2ca02c" if d >= 0 else "#d62728" for d in delta_df["delta"]]
-    plt.bar(delta_df["task"], delta_df["delta"], color=colors)
+    plt.bar(delta_df["task_label"], delta_df["delta"], color=colors)
     plt.axhline(0.0, color="black", linewidth=1)
     plt.xticks(rotation=75, ha="right")
     plt.ylabel("Delta (candidate - baseline)")
@@ -218,29 +261,30 @@ def main() -> None:
     baseline_df = load_run(RunInfo(label=args.baseline_label, root=args.baseline))
     candidate_df = load_run(RunInfo(label=args.candidate_label, root=args.candidate))
 
-    base_sel = baseline_df[["task", "value"]].rename(columns={"value": args.baseline_label})
-    cand_sel = candidate_df[["task", "value"]].rename(columns={"value": args.candidate_label})
+    merge_keys = ["task", "num_fewshot", "task_label"]
+    base_sel = baseline_df[merge_keys + ["value"]].rename(columns={"value": args.baseline_label})
+    cand_sel = candidate_df[merge_keys + ["value"]].rename(columns={"value": args.candidate_label})
 
-    merged = base_sel.merge(cand_sel, on="task", how="inner")
+    merged = base_sel.merge(cand_sel, on=merge_keys, how="inner")
     if merged.empty:
         raise RuntimeError("No overlapping tasks between baseline and candidate runs.")
 
     merged["delta"] = merged[args.candidate_label] - merged[args.baseline_label]
 
-    summary = make_summary_table(merged[["task", args.baseline_label, args.candidate_label, "delta"]])
+    summary = make_summary_table(merged[["task_label", args.baseline_label, args.candidate_label, "delta"]])
 
     print(summary.to_string(index=False))
 
     save = save_dir is not None
     plot_grouped_bars(
-        merged[["task", args.baseline_label, args.candidate_label]],
+        merged[["task_label", args.baseline_label, args.candidate_label]],
         save_dir,
         args.baseline_label,
         args.candidate_label,
         save=save,
         show=True,
     )
-    plot_deltas(merged[["task", "delta"]], save_dir, save=save, show=True)
+    plot_deltas(merged[["task_label", "delta"]], save_dir, save=save, show=True)
 
     if save and save_dir is not None:
         merged.to_csv(save_dir / "task_comparison.csv", index=False)
