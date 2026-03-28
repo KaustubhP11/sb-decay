@@ -17,8 +17,8 @@ data_stages:
       - /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/tulu/processed/tokenized
       - /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/dolma/processed/tokenized
       dataset_weights:
-      - 0.0762797053
-      - 0.9237202947
+      - 0.073
+      - 0.927
       pad_samples_to_global_batch_size: false
       return_positions: true
       token_size_in_bytes: 4

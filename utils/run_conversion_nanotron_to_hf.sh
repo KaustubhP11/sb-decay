@@ -3,8 +3,10 @@
 # Nanotron -> Hugging Face conversion (SmolLM2/Llama-style checkpoints)
 # Update paths below before running.
 NANOTRON_REPO="/iopsstor/scratch/cscs/kponkshe/nanotron"
-NANOTRON_CHECKPOINT="/iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_dolma_no_reasoning/4200"
-HF_OUTPUT_PATH="/iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_dolma_no_reasoning/hf"
+NANOTRON_CHECKPOINT_DIR="/iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_tulu_dolma"
+NANOTRON_CHECKPOINT_NAME="4200"
+NANOTRON_CHECKPOINT="${NANOTRON_CHECKPOINT_DIR}/${NANOTRON_CHECKPOINT_NAME}"
+HF_OUTPUT_PATH="${NANOTRON_CHECKPOINT_DIR}/hf"
 TOKENIZER_NAME_OR_PATH="meta-llama/Llama-3.2-1B"
 # Options: LlamaConfig, Qwen2Config, or AUTO (recommended)
 CONFIG_CLS="AUTO"
