@@ -63,10 +63,10 @@ def _normalize_role(value: Any) -> str:
 
 
 def _format_turn(role: str, content: str) -> str:
-    normalized_lines = [line.rstrip() for line in content.splitlines()]
-    if not normalized_lines:
+    normalized_content = content.rstrip()
+    if not normalized_content:
         return ""
-    return "\n".join(f"{role}: {line}" for line in normalized_lines)
+    return f"{role}: {normalized_content}"
 
 
 def _conversation_to_text(turns: Any) -> str:
