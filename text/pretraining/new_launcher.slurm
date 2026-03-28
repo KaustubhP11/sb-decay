@@ -27,5 +27,5 @@ start=$(date +%s)
 echo "$(date -d @${start} "+%Y-%m-%d %H:%M:%S"): ${SLURM_JOB_NAME} start id=${SLURM_JOB_ID}"
 
 srun --ntasks="${COUNT_NODE}" --ntasks-per-node=1 --mpi=pmix --network=disable_rdzv_get --environment=ngc_25-11-nemo-alps3 --export=MASTER_ADDR,COUNT_NODE,HOSTNAMES /iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/scripts/multi_node_pretraining.sh
-
+# srun --ntasks="${COUNT_NODE}" --ntasks-per-node=1   --export=ALL /iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/scripts/multi_node_pretraining.sh
 echo "END TIME: $(date)"

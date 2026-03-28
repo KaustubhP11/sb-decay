@@ -5,7 +5,7 @@ python3 /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/tulu/prepare_tulu.py 
   --dataset_id allenai/tulu-3-sft-mixture \
   --split train \
   --output_dir /iopsstor/scratch/cscs/kponkshe/sb-decay/text/data/tulu/processed \
-  --num_proc 16 \
+  --num_proc 128 \
   --preview 3 \
   --parquet_shards 256
 

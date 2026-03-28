@@ -15,7 +15,8 @@ cd /iopsstor/scratch/cscs/kponkshe/nanotron
 source .nano/bin/activate
 unset PYTHONPATH PYTHONHOME
 export PYTHONNOUSERSITE=1
-
+# source ~/miniconda3/bin/activate
+# conda activate .oss
 # uv pip install numpy
 # uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 # uv pip install setuptools
@@ -34,14 +35,14 @@ echo "Hostnames: $HOSTNAMES"
 which python
 python --version
 
-CONFIG_ORIG="/iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/smollm3/run_stable_no_reasoning.yaml"
-CKPT_DIR="/iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_dolma_no_reasoning"
+CONFIG_ORIG="/iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/smollm3/run_stable_tulu.yaml"
+CKPT_DIR="/iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_stable_tulu_dolma"
 LATEST_FILE="$CKPT_DIR/latest.txt"
 
 if [ -f "$LATEST_FILE" ]; then
     LATEST_STEP=$(cat "$LATEST_FILE")
     echo "Resuming from checkpoint at step $LATEST_STEP"
-    CONFIG_PATH_YAML="/iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/smollm3/run_stable_no_reasoning/.resume_stable_no_reasoning_${SLURM_JOB_ID}.yaml"
+    CONFIG_PATH_YAML="/iopsstor/scratch/cscs/kponkshe/sb-decay/text/pretraining/smollm3/.resume_stable_tulu_${SLURM_JOB_ID}.yaml"
     python -c "
 import yaml
 with open('${CONFIG_ORIG}') as f:
@@ -66,7 +67,6 @@ export LAUNCHER="torchrun \
     --tee 3 \
     "
 $LAUNCHER --node_rank "${SLURM_NODEID:-$SLURM_PROCID}" run_train.py --config-file "$CONFIG_PATH_YAML"
-
 if [[ "$CONFIG_PATH_YAML" == *".resume_"* ]]; then
     rm -f "$CONFIG_PATH_YAML"
 fi

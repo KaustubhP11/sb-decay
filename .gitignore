@@ -166,8 +166,8 @@ cython_debug/
 /checkpoints/
 /.cache/
 /logs/
-/text/data/openthoughts/processed/
-/text/data/dolma/processed/
+/text/data/*/processed/
+
 __pycache__/
 
 **/__pycache__/
