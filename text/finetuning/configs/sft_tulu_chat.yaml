@@ -1,0 +1,62 @@
+# Model
+model_name_or_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_dolma_no_reasoning/hf
+tokenizer_id: HuggingFaceTB/SmolLM3-3B
+attn_implementation: flash_attention_2
+dtype: bfloat16
+chat_template: |
+  {%- for message in messages -%}
+  {%- set content = message.content if message.content is string else "" -%}
+  {%- if message.role in ["system", "user"] -%}
+  {{- "<|im_start|>" + message.role + "\n" + content + "<|im_end|>\n" -}}
+  {%- elif message.role == "assistant" -%}
+  {% generation %}
+  {{- "<|im_start|>assistant\n" + content.lstrip("\n") + "<|im_end|>\n" -}}
+  {% endgeneration %}
+  {%- elif message.role == "tool" -%}
+  {{- "<|im_start|>user\n" + content + "<|im_end|>\n" -}}
+  {%- endif -%}
+  {%- endfor -%}
+  {%- if add_generation_prompt -%}
+  {{- "<|im_start|>assistant\n" -}}
+  {%- endif -%}
+
+# Dataset
+dataset_name: allenai/tulu-3-sft-mixture
+split: train
+answer_only_loss: false
+apply_chat_template: true
+assistant_only_loss: true
+chat_messages_field: messages
+chat_role_field: role
+chat_content_field: content
+chat_add_generation_prompt: false
+dataset_num_proc: 64
+dataset_download_mode: reuse_dataset_if_exists
+# dataset_cache_dir: /path/to/your/hf_datasets_cache
+# offline: true
+
+torch_compile: true
+
+# Hyperparameters
+learning_rate: 2.0e-5
+gradient_checkpointing: true
+num_train_epochs: 2.0
+logging_steps: 10
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 2
+max_length: 4096
+warmup_ratio: 0.03
+lr_scheduler_type: cosine
+output_dir: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_dolma_no_reasoning/sft_tulu_chat
+report_to: wandb
+seed: 42
+
+# Checkpointing
+checkpointing_steps: 500
+save_total_limit: 3
+
+# Hub
+push_to_hub: false
+
+# Finetuning mode
+use_lora: false

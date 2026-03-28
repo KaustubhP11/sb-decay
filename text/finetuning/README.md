@@ -68,38 +68,94 @@ If you want to fine-tune on other text datasets, you need to change `dataset_tex
 
 
 
-### Swiss-style YAML flow
+### Split post-training paths
 
-Two editable YAMLs:
-- `configs/zero3.yaml` (Accelerate + DeepSpeed)
-- `configs/sft_full.yaml` (training args)
+We now keep the finetuning flow split into two explicit dataset lanes:
 
-Scripts (only 3):
+1. `OpenThoughts`
+   Uses answer-only loss on question/answer style data.
+
+2. `Tulu`
+   Uses normal SFT over chat-templated conversations.
+
+Shared infra:
+- `configs/zero3.yaml`
 - `scripts/single_node.sh`
 - `scripts/multi_node.sh`
-- `scripts/submit_multinode.sh`
+
+#### OpenThoughts
+
+Config:
+- `configs/sft_openthoughts_answer_only.yaml`
 
 Single node:
 
 ```bash
-cd /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning
-ACCELERATE_CONFIG=configs/zero3.yaml \
-TRAIN_CONFIG=configs/sft_full.yaml \
-bash scripts/single_node.sh
+cd /Users/kaustubh/Desktop/Code/sb-decay
+bash text/finetuning/scripts/single_node_openthoughts.sh
 ```
 
-Multi node (run under SLURM):
+Single-node SLURM:
 
 ```bash
-ACCELERATE_CONFIG=/Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/configs/zero3.yaml \
-TRAIN_CONFIG=/Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/configs/sft_full.yaml \
-sbatch /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/scripts/submit_multinode.sh
+cd /Users/kaustubh/Desktop/Code/sb-decay
+sbatch text/finetuning/scripts/submit_singlenode_openthoughts.sh
 ```
 
-Direct command (no wrapper):
+Multi-node SLURM:
+
+```bash
+sbatch /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/scripts/submit_multinode_openthoughts.sh
+```
+
+Direct command:
 
 ```bash
 cd /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning
 accelerate launch --config_file configs/zero3.yaml \
-  sft_train.py --config configs/sft_full.yaml
+  sft_train.py --config configs/sft_openthoughts_answer_only.yaml
 ```
+
+#### Tulu
+
+Config:
+- `configs/sft_tulu_chat.yaml`
+
+Single node:
+
+```bash
+cd /Users/kaustubh/Desktop/Code/sb-decay
+bash text/finetuning/scripts/single_node_tulu.sh
+```
+
+Single-node SLURM:
+
+```bash
+cd /Users/kaustubh/Desktop/Code/sb-decay
+sbatch text/finetuning/scripts/submit_singlenode_tulu.sh
+```
+
+Multi-node SLURM:
+
+```bash
+sbatch /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning/scripts/submit_multinode_tulu.sh
+```
+
+Direct command:
+
+```bash
+cd /Users/kaustubh/Desktop/Code/sb-decay/text/finetuning
+accelerate launch --config_file configs/zero3.yaml \
+  sft_train.py --config configs/sft_tulu_chat.yaml
+```
+
+This path:
+- loads `allenai/tulu-3-sft-mixture`
+- normalizes each row into conversational `messages`
+- uses a plain SmolLM3-style chat template override without think/no_think logic
+- trains with assistant-only loss, so user/system tokens are context only
+
+Important:
+- `answer_only_loss` must stay `false`
+- `assistant_only_loss: true` requires a chat template that exposes assistant masks
+- if your local checkpoint tokenizer does not carry one, set `tokenizer_id` to a compatible instruct tokenizer

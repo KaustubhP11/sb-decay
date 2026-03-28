@@ -165,6 +165,97 @@ def _normalize_think_tags(text: str) -> str:
     return text.strip()
 
 
+def _stringify_chat_content(value):
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return _normalize_think_tags(value)
+    if isinstance(value, list):
+        parts = []
+        for item in value:
+            if isinstance(item, dict):
+                text_value = item.get("text")
+                if isinstance(text_value, str) and text_value.strip():
+                    parts.append(_normalize_think_tags(text_value))
+                    continue
+                fallback = item.get("content", "")
+                if fallback:
+                    parts.append(_normalize_think_tags(str(fallback)))
+            else:
+                rendered = _normalize_think_tags(str(item))
+                if rendered:
+                    parts.append(rendered)
+        return "\n".join(part for part in parts if part).strip()
+    return _normalize_think_tags(str(value))
+
+
+def _normalize_chat_role(value):
+    role = str(value or "").strip().lower()
+    role_map = {
+        "human": "user",
+        "user": "user",
+        "prompt": "user",
+        "instruction": "user",
+        "assistant": "assistant",
+        "gpt": "assistant",
+        "model": "assistant",
+        "response": "assistant",
+        "system": "system",
+        "developer": "system",
+        "tool": "tool",
+    }
+    return role_map.get(role, role if role else "user")
+
+
+def _extract_chat_messages(example, preferred_field, role_key, content_key):
+    candidate_fields = [preferred_field, "messages", "conversation", "conversations", "chat", "dialogue"]
+    seen = set()
+    for field in candidate_fields:
+        if not field or field in seen:
+            continue
+        seen.add(field)
+        turns = example.get(field)
+        if not isinstance(turns, list) or not turns:
+            continue
+
+        messages = []
+        for turn in turns:
+            if not isinstance(turn, dict):
+                continue
+            role = _normalize_chat_role(
+                turn.get(role_key, turn.get("from", turn.get("speaker", turn.get("author", ""))))
+            )
+            content = _stringify_chat_content(
+                turn.get(content_key, turn.get("value", turn.get("text", turn.get("message", ""))))
+            )
+            if content:
+                messages.append({"role": role, "content": content})
+
+        if messages:
+            return messages
+    return None
+
+
+def _build_chat_messages(example, messages_field, role_key, content_key):
+    messages = _extract_chat_messages(example, messages_field, role_key, content_key)
+    if not messages:
+        return {"messages": []}
+    return {"messages": messages}
+
+
+def _build_chat_text(example, tokenizer, messages_field, role_key, content_key, add_generation_prompt):
+    messages = _extract_chat_messages(example, messages_field, role_key, content_key)
+    if not messages:
+        return {"text": ""}
+    return {
+        "text": tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=add_generation_prompt,
+        ).strip()
+    }
+
+
 def _extract_answer_from_conversation(conversation):
     if not isinstance(conversation, list):
         return ""
@@ -263,6 +354,13 @@ def get_args():
     parser.add_argument("--answer_only_loss", type=str2bool, default=False)
     parser.add_argument("--question_field", type=str, default="question")
     parser.add_argument("--answer_field", type=str, default="answer")
+    parser.add_argument("--apply_chat_template", type=str2bool, default=False)
+    parser.add_argument("--chat_messages_field", type=str, default="messages")
+    parser.add_argument("--chat_role_field", type=str, default="role")
+    parser.add_argument("--chat_content_field", type=str, default="content")
+    parser.add_argument("--chat_add_generation_prompt", type=str2bool, default=False)
+    parser.add_argument("--chat_template", type=str, default=None)
+    parser.add_argument("--assistant_only_loss", type=str2bool, default=False)
 
     parser.add_argument("--max_seq_length", type=int, default=2048)
     parser.add_argument("--max_steps", type=int, default=1000)
@@ -351,9 +449,24 @@ def main(args):
 
     model = AutoModelForCausalLM.from_pretrained(args.model_id, **model_kwargs)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_id or args.model_id)
+    if args.chat_template:
+        tokenizer.chat_template = args.chat_template
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
+
+    if args.answer_only_loss and args.apply_chat_template:
+        raise ValueError("answer_only_loss and apply_chat_template are mutually exclusive.")
+    if args.answer_only_loss and args.assistant_only_loss:
+        raise ValueError("answer_only_loss and assistant_only_loss are mutually exclusive.")
+    if args.apply_chat_template and not tokenizer.chat_template:
+        raise ValueError(
+            "Tokenizer has no chat template. Set --tokenizer_id to a tokenizer that defines one."
+        )
+    if args.apply_chat_template and args.streaming:
+        raise ValueError("apply_chat_template does not currently support streaming datasets.")
+    if args.assistant_only_loss and not args.apply_chat_template:
+        raise ValueError("assistant_only_loss requires apply_chat_template with conversational data.")
 
     dataset_kwargs = {
         "split": args.split,
@@ -470,9 +583,66 @@ def main(args):
             args=TrainingArguments(**_filter_kwargs_for_init(TrainingArguments, training_kwargs)),
         )
     else:
+        train_data = data
+        if args.apply_chat_template:
+            transform_num_proc = args.num_proc if args.num_proc else multiprocessing.cpu_count()
+
+            def build_chat_dataset():
+                if args.assistant_only_loss:
+                    mapped = data.map(
+                        lambda ex: _build_chat_messages(
+                            ex,
+                            args.chat_messages_field,
+                            args.chat_role_field,
+                            args.chat_content_field,
+                        ),
+                        remove_columns=data.column_names,
+                        num_proc=transform_num_proc,
+                        load_from_cache_file=args.dataset_load_from_cache_file,
+                        cache_file_name=os.path.join(transform_cache_dir, "chat_messages_map.arrow"),
+                        desc="Normalizing conversational messages",
+                    )
+                    return mapped.filter(
+                        lambda ex: len(ex["messages"]) > 0,
+                        num_proc=transform_num_proc,
+                        load_from_cache_file=args.dataset_load_from_cache_file,
+                        cache_file_name=os.path.join(transform_cache_dir, "chat_messages_filter.arrow"),
+                        desc="Dropping rows with empty messages",
+                    )
+
+                mapped = data.map(
+                    lambda ex: _build_chat_text(
+                        ex,
+                        tokenizer,
+                        args.chat_messages_field,
+                        args.chat_role_field,
+                        args.chat_content_field,
+                        args.chat_add_generation_prompt,
+                    ),
+                    remove_columns=data.column_names,
+                    num_proc=transform_num_proc,
+                    load_from_cache_file=args.dataset_load_from_cache_file,
+                    cache_file_name=os.path.join(transform_cache_dir, "chat_template_map.arrow"),
+                    desc="Applying chat template",
+                )
+                return mapped.filter(
+                    lambda ex: len(ex["text"].strip()) > 0,
+                    num_proc=transform_num_proc,
+                    load_from_cache_file=args.dataset_load_from_cache_file,
+                    cache_file_name=os.path.join(transform_cache_dir, "chat_template_filter.arrow"),
+                    desc="Dropping rows with empty chat text",
+                )
+
+            if process_index == 0:
+                print("Processing dataset with chat template...")
+                train_data = build_chat_dataset()
+
+            state.wait_for_everyone()
+            train_data = build_chat_dataset()
+
         # setup the trainer
         sft_kwargs = dict(
-            dataset_text_field=args.dataset_text_field,
+            dataset_text_field=(None if args.assistant_only_loss else args.dataset_text_field),
             dataset_num_proc=args.num_proc,
             max_seq_length=args.max_seq_length,
             per_device_train_batch_size=args.micro_batch_size,
@@ -499,11 +669,12 @@ def main(args):
             report_to=args.report_to,
             push_to_hub=args.push_to_hub,
             hub_model_id=args.repo_id,
+            assistant_only_loss=args.assistant_only_loss,
         )
         trainer = SFTTrainer(
             model=model,
             processing_class=tokenizer,
-            train_dataset=data,
+            train_dataset=train_data,
             args=SFTConfig(**_filter_kwargs_for_init(SFTConfig, sft_kwargs)),
         )
 
