@@ -1,5 +1,5 @@
 # Model
-model_name_or_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_dolma_no_reasoning/hf
+model_name_or_path: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_tulu_dolma/hf
 tokenizer_id: HuggingFaceTB/SmolLM3-3B
 attn_implementation: flash_attention_2
 dtype: bfloat16
@@ -47,7 +47,7 @@ gradient_accumulation_steps: 2
 max_length: 4096
 warmup_ratio: 0.03
 lr_scheduler_type: cosine
-output_dir: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_dolma_no_reasoning/sft_tulu_chat
+output_dir: /iopsstor/scratch/cscs/kponkshe/sb-decay/checkpoints/run_decay_tulu_dolma/sft_tulu_chat
 report_to: wandb
 seed: 42
 

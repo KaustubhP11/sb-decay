@@ -10,5 +10,5 @@
 
 ACCELERATE_CONFIG="${ACCELERATE_CONFIG:-/iopsstor/scratch/cscs/kponkshe/sb-decay/text/finetuning/configs/zero3.yaml}" \
 TRAIN_CONFIG="${TRAIN_CONFIG:-/iopsstor/scratch/cscs/kponkshe/sb-decay/text/finetuning/configs/sft_tulu_chat.yaml}" \
-srun --mpi=pmix --network=disable_rdzv_get --environment=ngc_25-11-nemo-alps3 --export=NONE \
+srun --mpi=pmix --network=disable_rdzv_get --environment=ngc_25-11-nemo-alps3 --export=ACCELERATE_CONFIG,TRAIN_CONFIG \
   /iopsstor/scratch/cscs/kponkshe/sb-decay/text/finetuning/scripts/multi_node.sh

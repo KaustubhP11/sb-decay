@@ -243,6 +243,16 @@ def _build_chat_messages(example, messages_field, role_key, content_key):
     return {"messages": messages}
 
 
+def _has_assistant_message(example):
+    messages = example.get("messages", [])
+    if not isinstance(messages, list):
+        return False
+    return any(
+        isinstance(message, dict) and message.get("role") == "assistant" and message.get("content", "").strip()
+        for message in messages
+    )
+
+
 def _build_chat_text(example, tokenizer, messages_field, role_key, content_key, add_generation_prompt):
     messages = _extract_chat_messages(example, messages_field, role_key, content_key)
     if not messages:
@@ -587,7 +597,7 @@ def main(args):
         if args.apply_chat_template:
             transform_num_proc = args.num_proc if args.num_proc else multiprocessing.cpu_count()
 
-            def build_chat_dataset():
+            def build_chat_dataset(emit_stats=False):
                 if args.assistant_only_loss:
                     mapped = data.map(
                         lambda ex: _build_chat_messages(
@@ -602,13 +612,17 @@ def main(args):
                         cache_file_name=os.path.join(transform_cache_dir, "chat_messages_map.arrow"),
                         desc="Normalizing conversational messages",
                     )
-                    return mapped.filter(
-                        lambda ex: len(ex["messages"]) > 0,
+                    filtered = mapped.filter(
+                        _has_assistant_message,
                         num_proc=transform_num_proc,
                         load_from_cache_file=args.dataset_load_from_cache_file,
-                        cache_file_name=os.path.join(transform_cache_dir, "chat_messages_filter.arrow"),
-                        desc="Dropping rows with empty messages",
+                        cache_file_name=os.path.join(transform_cache_dir, "chat_messages_with_assistant_filter.arrow"),
+                        desc="Dropping rows without assistant messages",
                     )
+                    if emit_stats:
+                        dropped = len(mapped) - len(filtered)
+                        print(f"Filtered out {dropped} rows without assistant messages before SFTTrainer.")
+                    return filtered
 
                 mapped = data.map(
                     lambda ex: _build_chat_text(
@@ -635,7 +649,7 @@ def main(args):
 
             if process_index == 0:
                 print("Processing dataset with chat template...")
-                train_data = build_chat_dataset()
+                train_data = build_chat_dataset(emit_stats=True)
 
             state.wait_for_everyone()
             train_data = build_chat_dataset()
